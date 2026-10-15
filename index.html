@@ -70,6 +70,11 @@ button{font:inherit;color:inherit}
 .lgo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none}
 .lgo.has img{display:block}
 .lgo.has svg{visibility:hidden}
+/* logo z pliku bywa czarne na białym tle: w jasnym pasku znika biel, w ciemnych miejscach logo jest odwracane */
+.mi .lgo img{mix-blend-mode:multiply}
+#screen .lgo img{filter:invert(1);mix-blend-mode:screen}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .mi .lgo img{filter:invert(1);mix-blend-mode:screen}}
+:root[data-theme="dark"] .mi .lgo img{filter:invert(1);mix-blend-mode:screen}
 .ico{stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:700px){#menubar .l .mi:nth-child(n+4){display:none}#clock .wd{display:none}}
 
@@ -1154,7 +1159,7 @@ function icon(id){
     pomodoro:()=>top('#ff7a59','#e03c2a')+'<circle cx="30" cy="34" r="16" fill="#fff"/><path d="M30 34V23M30 34l8 4" stroke="#e03c2a" stroke-width="3" stroke-linecap="round"/><path d="M30 18c0-4 2-6 6-7" stroke="#2fb35a" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
     trash:()=>top('#d4d8df','#9aa1ad')+'<rect x="15" y="14" width="30" height="4" rx="2" fill="#fff"/><rect x="25" y="10" width="10" height="4" rx="2" fill="#fff"/><path d="M18 21h24l-2 27a3 3 0 0 1-3 3H23a3 3 0 0 1-3-3z" fill="#fff" opacity=".9"/><path d="M26 26v18M30 26v18M34 26v18" stroke="#b9bec8" stroke-width="2" stroke-linecap="round"/>',
     trashfull:()=>top('#d4d8df','#9aa1ad')+'<path d="M20 20l6-7 8 4 5-6 4 9z" fill="#fff" stroke="#b9bec8"/><rect x="15" y="17" width="30" height="4" rx="2" fill="#fff"/><path d="M18 24h24l-2 24a3 3 0 0 1-3 3H23a3 3 0 0 1-3-3z" fill="#fff" opacity=".9"/><path d="M26 28v16M30 28v16M34 28v16" stroke="#b9bec8" stroke-width="2" stroke-linecap="round"/>',
-    about:()=>top('#4a4f63','#1d2030')+`<g transform="translate(12 12) scale(1.5)" color="#fff" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">${LOGO_MARK(24).replace(/^<svg[^>]*>|<\/svg>$/g,'')}</g>${LOGO_LOADED?'<image href="logo.png" x="0" y="0" width="60" height="60" preserveAspectRatio="xMidYMid slice"/>':''}`
+    about:()=>LOGO_LOADED?top('#ffffff','#e8eaee')+'<image href="logo.png" x="5" y="5" width="50" height="50" preserveAspectRatio="xMidYMid meet" style="mix-blend-mode:multiply"/>':top('#4a4f63','#1d2030')+`<g transform="translate(12 12) scale(1.5)" color="#fff" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">${LOGO_MARK(24).replace(/^<svg[^>]*>|<\/svg>$/g,'')}</g>`
   };
   const gl='g'+uid++;
   const gloss=`<defs><linearGradient id="${gl}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".34"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="60" height="60" rx="14" fill="url(#${gl})" pointer-events="none"/><rect x=".5" y=".5" width="59" height="59" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".3" pointer-events="none"/>`;
