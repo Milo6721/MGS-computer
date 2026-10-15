@@ -17,9 +17,12 @@ function openApp(id,opts={}){
   const win=el('div','win'), tb=el('div','tb'), body=el('div','body');
   tb.innerHTML='<div class="lights"><i class="c r"></i><i class="c y"></i><i class="c g"></i></div><div class="ttl"></div>';
   win.append(tb,body);
-  const W=Math.min(a.w||640,innerWidth-16), H=Math.min(a.h||420,innerHeight-MB-(small()?76:112));
-  const off=small()?0:((cascade++%5)*26);
-  win.style.cssText=`width:${W}px;height:${H}px;left:${Math.max(8,(innerWidth-W)/2-70+off)}px;top:${MB+14+(small()?0:off)}px`;
+  /* rozmiar okna rośnie razem z ekranem; aplikacje o stałym układzie zostają w swoim rozmiarze */
+  const f=(small()||a.fixed)?1:Math.min(1.9,Math.max(1,Math.min(innerWidth/1180,innerHeight/720)));
+  let bw=(a.w||640)*f, bh=(a.h||420)*f; if(a.big&&!small()){bw=innerWidth*.86;bh=innerHeight*.84}
+  const W=Math.floor(Math.min(bw,innerWidth-16)), H=Math.floor(Math.min(bh,innerHeight-MB-(small()?76:dockSpace()+14)));
+  const off=(small()||a.big)?0:((cascade++%5)*26);
+  win.style.cssText=`width:${W}px;height:${H}px;left:${Math.max(8,Math.min(innerWidth-W-8,(innerWidth-W)/2-(a.big?0:70)+off))}px;top:${Math.max(MB+6,Math.min(innerHeight-H-dockSpace()-4,MB+14+(small()?0:off)))}px`;
   const w={wid:++wseq,id,el:win,min:false,max:false,cleanups:[],opts};
   w.title=t=>{$('.ttl',tb).textContent=t};
   w.close=()=>closeWin(w);
@@ -113,6 +116,15 @@ function resizer(w,h){
   });
 }
 function closeAll(){[...wins.values()].forEach(closeWin)}
+/* pełny ekran całej przeglądarki (wymaga kliknięcia lub klawisza użytkownika) */
+function toggleFullscreen(){
+  try{
+    const d=document, e=d.documentElement;
+    if(d.fullscreenElement||d.webkitFullscreenElement){const r=(d.exitFullscreen||d.webkitExitFullscreen).call(d);if(r&&r.catch)r.catch(()=>{})}
+    else{const r=(e.requestFullscreen||e.webkitRequestFullscreen).call(e);if(r&&r.catch)r.catch(()=>{})}
+  }catch(err){}
+}
+addEventListener('fullscreenchange',()=>{refreshDock();const b=$('#fsbtn');if(b)b.title=document.fullscreenElement?'Zamknij pełny ekran':'Pełny ekran'});
 
 /* ---------- Mission Control ---------- */
 let mcOn=false, mcLabels=[];
@@ -234,7 +246,7 @@ function menus(){
     {h:esc(a.name),b:1,items:[['O programie '+a.name,()=>openApp('about')],'-',['Ustawienia…',()=>openApp('settings'),'⌘,'],'-',['Ukryj '+a.name,()=>front&&doMin(front),'⌘H'],['Zakończ '+a.name,()=>id&&winsOf(id).forEach(closeWin),'⌘Q']]},
     {h:'Plik',items:[...(a.multi?[['Nowe okno',()=>openApp(id||'finder',{new:true}),'⌘N']]:[]),['Zamknij okno',()=>front&&closeWin(front),'⌘W'],...fileExtra]},
     {h:'Edycja',items:[['Cofnij',ex('undo'),'⌘Z'],'-',['Wytnij',ex('cut'),'⌘X'],['Kopiuj',ex('copy'),'⌘C'],['Wklej',ex('paste'),'⌘V'],['Zaznacz wszystko',ex('selectAll'),'⌘A']]},
-    {h:'Widok',items:[['Pełny rozmiar okna',()=>front&&toggleMax(front)],['Mission Control',toggleMC,'F3'],['Launchpad',openLaunchpad,'F4'],'-',['Przełącz tryb ciemny',toggleTheme]]},
+    {h:'Widok',items:[['Pełny ekran',toggleFullscreen,'⌃⌘F'],['Pełny rozmiar okna',()=>front&&toggleMax(front)],['Mission Control',toggleMC,'F3'],['Launchpad',openLaunchpad,'F4'],'-',['Przełącz tryb ciemny',toggleTheme]]},
     {h:'Okno',items:[['Minimalizuj',()=>front&&doMin(front),'⌘M'],['Powiększ',()=>front&&toggleMax(front)],'-',...[...wins.values()].map(w=>[APPS[w.id].name+(w.min?' (zminimalizowane)':''),()=>{if(w.min)unmin(w);focus(w)}])]},
     {h:'Pomoc',items:[['Szukaj',openSpot,'⌘?'],['Skróty klawiszowe',()=>dialog({title:'Skróty klawiszowe',msg:'Ctrl + Spacja: Spotlight\nF3 lub Ctrl + ↑: Mission Control\nF4: Launchpad\nEsc: zamyka menu i nakładki\nTab w Terminalu: uzupełnianie\nCtrl + S w Edytorze tekstu: zapis',buttons:[{label:'OK',primary:true}]})]]}
   ];
@@ -320,6 +332,7 @@ function spRender(){
   });
 }
 $('#spbtn').onclick=e=>{e.stopPropagation();openSpot()};
+$('#fsbtn').onclick=e=>{e.stopPropagation();toggleFullscreen()};
 
 /* ---------- Launchpad ---------- */
 function closeLaunchpad(){const l=$('#launch');if(l)l.remove()}
@@ -411,6 +424,7 @@ function login(){
 }
 function unlock(){
   sfx('chime'); scr.classList.add('fade');
+  if(S.autoFs&&!document.fullscreenElement)toggleFullscreen();
   setTimeout(()=>{scr.hidden=true;scr.className='';scr.innerHTML=''},520);
   if(!sessionOn){sessionOn=true;startSession()}
 }

@@ -357,6 +357,9 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .fav{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--fg);text-decoration:none;font-size:12px}
 .fav i{width:60px;height:60px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:24px;font-style:normal;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 /* dock: pobieranie, upuszczanie w koszu */
+.webapp{flex:1;position:relative;display:flex;min-width:0;background:var(--win)}
+.wsplash{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;gap:14px;color:var(--fg2);font-weight:600}
+.wsplash img{width:88px;height:88px;border-radius:22px;box-shadow:0 6px 20px rgba(0,0,0,.2)}
 .dk .badge{position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#ff3b30;color:#fff;font:700 11.5px/19px var(--font);text-align:center;font-style:normal;box-shadow:0 1px 4px rgba(0,0,0,.4);pointer-events:none}
 .dk.dling svg.app{opacity:.5;filter:grayscale(.7)}
 .dlr{position:absolute;inset:0;display:grid;place-items:center;border-radius:22%;background:rgba(0,0,0,.28);pointer-events:none}
@@ -398,6 +401,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <span class="mi" id="musicx" hidden title="Odtwarzanie"></span>
       <span class="mi" id="bat" title="Bateria"></span>
       <button class="mi" id="wifi" title="Wi-Fi"></button>
+      <button class="mi" id="fsbtn" title="Pełny ekran" aria-label="Pełny ekran"><svg class="ico" width="14" height="14" viewBox="0 0 14 14"><path d="M1.5 5V1.5H5M9 1.5h3.500V5M12.500 9v3.500H9M5 12.500H1.500V9"/></svg></button>
       <button class="mi" id="spbtn" title="Spotlight (Ctrl+Spacja)"><svg class="ico" width="15" height="15" viewBox="0 0 15 15"><circle cx="6.3" cy="6.3" r="4.6"/><path d="m10 10 3.6 3.6"/></svg></button>
       <button class="mi" id="ccbtn" title="Centrum sterowania"><svg class="ico" width="16" height="14" viewBox="0 0 16 14"><rect x="1" y="1.5" width="14" height="4" rx="2"/><rect x="1" y="8.5" width="14" height="4" rx="2"/><circle cx="11" cy="3.5" r="1.1" fill="currentColor"/><circle cx="5" cy="10.5" r="1.1" fill="currentColor"/></svg></button>
       <button class="mi" id="clock" title="Centrum powiadomień"></button>
@@ -432,7 +436,7 @@ const LOGO_MARK=(s=14)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fil
 const LOGO=(s=14)=>`<span class="lgo" style="width:${s}px;height:${s}px">${LOGO_MARK(s).replace(/width="\d+" height="\d+"/,'width="100%" height="100%"')}<img src="logo.png" alt="" onload="this.parentNode.classList.add('has')" onerror="this.remove()"></span>`;
 
 /* ---------- ustawienia ---------- */
-const DEF={theme:null,wall:'1',accent:'#0a84ff',dockSize:58,magnify:true,dockHide:false,volume:60,brightness:100,sounds:true,user:'Gość',avatar:'#7d8794',dnd:false,wifi:true,bt:true,installed:[]};
+const DEF={theme:null,wall:'1',accent:'#0a84ff',dockSize:58,autoFs:true,magnify:true,dockHide:false,volume:60,brightness:100,sounds:true,user:'Gość',avatar:'#7d8794',dnd:false,wifi:true,bt:true,installed:[]};
 const S=Object.assign({},DEF,store.get('settings',{}));
 const saveS=()=>store.set('settings',S);
 const isDark=()=>root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
@@ -615,9 +619,12 @@ function openApp(id,opts={}){
   const win=el('div','win'), tb=el('div','tb'), body=el('div','body');
   tb.innerHTML='<div class="lights"><i class="c r"></i><i class="c y"></i><i class="c g"></i></div><div class="ttl"></div>';
   win.append(tb,body);
-  const W=Math.min(a.w||640,innerWidth-16), H=Math.min(a.h||420,innerHeight-MB-(small()?76:112));
-  const off=small()?0:((cascade++%5)*26);
-  win.style.cssText=`width:${W}px;height:${H}px;left:${Math.max(8,(innerWidth-W)/2-70+off)}px;top:${MB+14+(small()?0:off)}px`;
+  /* rozmiar okna rośnie razem z ekranem; aplikacje o stałym układzie zostają w swoim rozmiarze */
+  const f=(small()||a.fixed)?1:Math.min(1.9,Math.max(1,Math.min(innerWidth/1180,innerHeight/720)));
+  let bw=(a.w||640)*f, bh=(a.h||420)*f; if(a.big&&!small()){bw=innerWidth*.86;bh=innerHeight*.84}
+  const W=Math.floor(Math.min(bw,innerWidth-16)), H=Math.floor(Math.min(bh,innerHeight-MB-(small()?76:dockSpace()+14)));
+  const off=(small()||a.big)?0:((cascade++%5)*26);
+  win.style.cssText=`width:${W}px;height:${H}px;left:${Math.max(8,Math.min(innerWidth-W-8,(innerWidth-W)/2-(a.big?0:70)+off))}px;top:${Math.max(MB+6,Math.min(innerHeight-H-dockSpace()-4,MB+14+(small()?0:off)))}px`;
   const w={wid:++wseq,id,el:win,min:false,max:false,cleanups:[],opts};
   w.title=t=>{$('.ttl',tb).textContent=t};
   w.close=()=>closeWin(w);
@@ -711,6 +718,15 @@ function resizer(w,h){
   });
 }
 function closeAll(){[...wins.values()].forEach(closeWin)}
+/* pełny ekran całej przeglądarki (wymaga kliknięcia lub klawisza użytkownika) */
+function toggleFullscreen(){
+  try{
+    const d=document, e=d.documentElement;
+    if(d.fullscreenElement||d.webkitFullscreenElement){const r=(d.exitFullscreen||d.webkitExitFullscreen).call(d);if(r&&r.catch)r.catch(()=>{})}
+    else{const r=(e.requestFullscreen||e.webkitRequestFullscreen).call(e);if(r&&r.catch)r.catch(()=>{})}
+  }catch(err){}
+}
+addEventListener('fullscreenchange',()=>{refreshDock();const b=$('#fsbtn');if(b)b.title=document.fullscreenElement?'Zamknij pełny ekran':'Pełny ekran'});
 
 /* ---------- Mission Control ---------- */
 let mcOn=false, mcLabels=[];
@@ -832,7 +848,7 @@ function menus(){
     {h:esc(a.name),b:1,items:[['O programie '+a.name,()=>openApp('about')],'-',['Ustawienia…',()=>openApp('settings'),'⌘,'],'-',['Ukryj '+a.name,()=>front&&doMin(front),'⌘H'],['Zakończ '+a.name,()=>id&&winsOf(id).forEach(closeWin),'⌘Q']]},
     {h:'Plik',items:[...(a.multi?[['Nowe okno',()=>openApp(id||'finder',{new:true}),'⌘N']]:[]),['Zamknij okno',()=>front&&closeWin(front),'⌘W'],...fileExtra]},
     {h:'Edycja',items:[['Cofnij',ex('undo'),'⌘Z'],'-',['Wytnij',ex('cut'),'⌘X'],['Kopiuj',ex('copy'),'⌘C'],['Wklej',ex('paste'),'⌘V'],['Zaznacz wszystko',ex('selectAll'),'⌘A']]},
-    {h:'Widok',items:[['Pełny rozmiar okna',()=>front&&toggleMax(front)],['Mission Control',toggleMC,'F3'],['Launchpad',openLaunchpad,'F4'],'-',['Przełącz tryb ciemny',toggleTheme]]},
+    {h:'Widok',items:[['Pełny ekran',toggleFullscreen,'⌃⌘F'],['Pełny rozmiar okna',()=>front&&toggleMax(front)],['Mission Control',toggleMC,'F3'],['Launchpad',openLaunchpad,'F4'],'-',['Przełącz tryb ciemny',toggleTheme]]},
     {h:'Okno',items:[['Minimalizuj',()=>front&&doMin(front),'⌘M'],['Powiększ',()=>front&&toggleMax(front)],'-',...[...wins.values()].map(w=>[APPS[w.id].name+(w.min?' (zminimalizowane)':''),()=>{if(w.min)unmin(w);focus(w)}])]},
     {h:'Pomoc',items:[['Szukaj',openSpot,'⌘?'],['Skróty klawiszowe',()=>dialog({title:'Skróty klawiszowe',msg:'Ctrl + Spacja: Spotlight\nF3 lub Ctrl + ↑: Mission Control\nF4: Launchpad\nEsc: zamyka menu i nakładki\nTab w Terminalu: uzupełnianie\nCtrl + S w Edytorze tekstu: zapis',buttons:[{label:'OK',primary:true}]})]]}
   ];
@@ -918,6 +934,7 @@ function spRender(){
   });
 }
 $('#spbtn').onclick=e=>{e.stopPropagation();openSpot()};
+$('#fsbtn').onclick=e=>{e.stopPropagation();toggleFullscreen()};
 
 /* ---------- Launchpad ---------- */
 function closeLaunchpad(){const l=$('#launch');if(l)l.remove()}
@@ -1009,6 +1026,7 @@ function login(){
 }
 function unlock(){
   sfx('chime'); scr.classList.add('fade');
+  if(S.autoFs&&!document.fullscreenElement)toggleFullscreen();
   setTimeout(()=>{scr.hidden=true;scr.className='';scr.innerHTML=''},520);
   if(!sessionOn){sessionOn=true;startSession()}
 }
@@ -1140,10 +1158,10 @@ const APPS={
   finder:{name:'Finder',w:740,h:470,multi:true,reuse:true,render:renderFinder},
   launchpad:{name:'Launchpad',special:()=>openLaunchpad()},
   browser:{name:'Przeglądarka',w:780,h:520,render:renderBrowser},
-  workdocs:{name:'Work Docs',w:940,h:600,render:(b,w)=>renderWeb(b,w,'workdocs','https://workdocs.online')},
-  mathdocs:{name:'Math Docs',w:940,h:600,render:(b,w)=>renderWeb(b,w,'mathdocs','https://math.workdocs.online')},
-  wykresy:{name:'Wykresy',w:940,h:600,render:(b,w)=>renderWeb(b,w,'wykresy','https://wykresy.workdocs.online')},
-  paybud:{name:'Pay Buddy',w:420,h:620,render:(b,w)=>renderWeb(b,w,'paybud','https://paybud.site')},
+  workdocs:{name:'Work Docs',w:940,h:600,big:true,render:(b,w)=>renderWeb(b,w,'workdocs','https://workdocs.online')},
+  mathdocs:{name:'Math Docs',w:940,h:600,big:true,render:(b,w)=>renderWeb(b,w,'mathdocs','https://math.workdocs.online')},
+  wykresy:{name:'Wykresy',w:940,h:600,big:true,render:(b,w)=>renderWeb(b,w,'wykresy','https://wykresy.workdocs.online')},
+  paybud:{name:'Pay Buddy',w:460,h:700,render:(b,w)=>renderWeb(b,w,'paybud','https://paybud.site')},
   photos:{name:'Zdjęcia',w:720,h:480,render:renderPhotos},
   music:{name:'Muzyka',w:700,h:470,render:renderMusic},
   notes:{name:'Notatki',w:660,h:430,render:renderNotes},
@@ -1366,7 +1384,7 @@ function renderPhotos(body,w){
 
 /* ================= PRZEGLĄDARKA + Work Docs / Math Docs ================= */
 function webFrame(url){
-  const f=el('iframe'); f.src=url; f.style.cssText='flex:1;width:100%;border:0;background:#fff;min-height:0';
+  const f=el('iframe'); f.src=url; f.style.cssText='position:relative;flex:1;width:100%;border:0;background:#fff;min-height:0';
   f.setAttribute('referrerpolicy','no-referrer'); f.setAttribute('allow','clipboard-write; fullscreen'); f.title=url; return f;
 }
 const SITE_APP={'workdocs.online':'workdocs','math.workdocs.online':'mathdocs','wykresy.workdocs.online':'wykresy','paybud.site':'paybud'};
@@ -1375,11 +1393,12 @@ const favHTML=host=>SITE_APP[host]&&LOGOS[SITE_APP[host]]?`<img src="${LOGOS[SIT
 
 /* okno aplikacji internetowej (Work Docs, Math Docs, Wykresy, Pay Buddy) */
 function renderWeb(body,w,id,url){
-  const main=el('div','main'), bar=el('div','bar'), hint=el('div','status');
-  bar.innerHTML=`<img src="${LOGOS[id]}" alt="" style="width:20px;height:20px;border-radius:5px"><b>${esc(APPS[id].name)}</b><span class="sp" style="font-weight:400;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(hostOf(url))}</span><button id="rl" aria-label="Odśwież">Odśwież</button><a class="tbtn" style="display:inline-grid;place-items:center;text-decoration:none;color:var(--fg)" href="${esc(url)}" target="_blank" rel="noopener">Otwórz w nowej karcie</a>`;
-  hint.textContent='Jeśli okno jest puste, ta wersja strony blokuje osadzanie. Użyj przycisku „Otwórz w nowej karcie”.';
-  let fr=webFrame(url); main.append(bar,fr,hint); body.append(main);
-  $('#rl',bar).onclick=()=>{const n=webFrame(url);fr.replaceWith(n);fr=n};
+  /* wygląda jak zwykła aplikacja: sama zawartość, bez paska adresu i dopisków */
+  const wrap=el('div','webapp',`<div class="wsplash"><img src="${LOGOS[id]}" alt=""><span></span></div>`);
+  $('.wsplash span',wrap).textContent=APPS[id].name;
+  let fr=webFrame(url); wrap.append(fr); body.append(wrap);
+  const reload=()=>{const n=webFrame(url);fr.replaceWith(n);fr=n};
+  w.menu=[['Odśwież',reload,'⌘R'],['Otwórz w przeglądarce',()=>openApp('browser',{url})]];
 }
 
 /* przeglądarka z kartami, zakładkami i historią */
@@ -1995,7 +2014,7 @@ function renderSettings(body,w,opts){
       set.append(card(row('Rozmiar docka',rng(36,84,S.dockSize,v=>{S.dockSize=v;saveS();refreshDock()})),row('Powiększanie po najechaniu',sw(S.magnify,v=>{S.magnify=v;saveS()})),row('Automatycznie ukryj i pokaż dock',sw(S.dockHide,v=>{S.dockHide=v;saveS();applySettings()}),'Najedź na dolną krawędź ekranu, aby go pokazać')));
     }
     if(pane==='disp'){
-      set.append(card(row('Jasność',rng(30,100,S.brightness,v=>{S.brightness=v;saveS();applySettings()})),row('Głośność',rng(0,100,S.volume,v=>{S.volume=v;saveS();applySettings()})),row('Dźwięki systemowe',sw(S.sounds,v=>{S.sounds=v;saveS()}))));
+      set.append(card(row('Jasność',rng(30,100,S.brightness,v=>{S.brightness=v;saveS();applySettings()})),row('Głośność',rng(0,100,S.volume,v=>{S.volume=v;saveS();applySettings()})),row('Dźwięki systemowe',sw(S.sounds,v=>{S.sounds=v;saveS()})),row('Pełny ekran po zalogowaniu',sw(S.autoFs,v=>{S.autoFs=v;saveS()}),'Przeglądarka może poprosić o zgodę'),row('Pełny ekran teraz',(()=>{const b=el('button','btn','Włącz lub wyłącz');b.onclick=toggleFullscreen;return b})())));
     }
     if(pane==='user'){
       const inp=el('input','field'); inp.value=S.user; inp.style.width='170px'; inp.maxLength=20; inp.setAttribute('aria-label','Nazwa użytkownika'); inp.onchange=()=>{S.user=inp.value.trim()||'Gość';saveS();buildMenubar();emit('fs')};

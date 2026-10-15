@@ -238,7 +238,7 @@ function renderSettings(body,w,opts){
       set.append(card(row('Rozmiar docka',rng(36,84,S.dockSize,v=>{S.dockSize=v;saveS();refreshDock()})),row('Powiększanie po najechaniu',sw(S.magnify,v=>{S.magnify=v;saveS()})),row('Automatycznie ukryj i pokaż dock',sw(S.dockHide,v=>{S.dockHide=v;saveS();applySettings()}),'Najedź na dolną krawędź ekranu, aby go pokazać')));
     }
     if(pane==='disp'){
-      set.append(card(row('Jasność',rng(30,100,S.brightness,v=>{S.brightness=v;saveS();applySettings()})),row('Głośność',rng(0,100,S.volume,v=>{S.volume=v;saveS();applySettings()})),row('Dźwięki systemowe',sw(S.sounds,v=>{S.sounds=v;saveS()}))));
+      set.append(card(row('Jasność',rng(30,100,S.brightness,v=>{S.brightness=v;saveS();applySettings()})),row('Głośność',rng(0,100,S.volume,v=>{S.volume=v;saveS();applySettings()})),row('Dźwięki systemowe',sw(S.sounds,v=>{S.sounds=v;saveS()})),row('Pełny ekran po zalogowaniu',sw(S.autoFs,v=>{S.autoFs=v;saveS()}),'Przeglądarka może poprosić o zgodę'),row('Pełny ekran teraz',(()=>{const b=el('button','btn','Włącz lub wyłącz');b.onclick=toggleFullscreen;return b})())));
     }
     if(pane==='user'){
       const inp=el('input','field'); inp.value=S.user; inp.style.width='170px'; inp.maxLength=20; inp.setAttribute('aria-label','Nazwa użytkownika'); inp.onchange=()=>{S.user=inp.value.trim()||'Gość';saveS();buildMenubar();emit('fs')};

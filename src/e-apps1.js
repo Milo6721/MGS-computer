@@ -47,10 +47,10 @@ const APPS={
   finder:{name:'Finder',w:740,h:470,multi:true,reuse:true,render:renderFinder},
   launchpad:{name:'Launchpad',special:()=>openLaunchpad()},
   browser:{name:'Przeglądarka',w:780,h:520,render:renderBrowser},
-  workdocs:{name:'Work Docs',w:940,h:600,render:(b,w)=>renderWeb(b,w,'workdocs','https://workdocs.online')},
-  mathdocs:{name:'Math Docs',w:940,h:600,render:(b,w)=>renderWeb(b,w,'mathdocs','https://math.workdocs.online')},
-  wykresy:{name:'Wykresy',w:940,h:600,render:(b,w)=>renderWeb(b,w,'wykresy','https://wykresy.workdocs.online')},
-  paybud:{name:'Pay Buddy',w:420,h:620,render:(b,w)=>renderWeb(b,w,'paybud','https://paybud.site')},
+  workdocs:{name:'Work Docs',w:940,h:600,big:true,render:(b,w)=>renderWeb(b,w,'workdocs','https://workdocs.online')},
+  mathdocs:{name:'Math Docs',w:940,h:600,big:true,render:(b,w)=>renderWeb(b,w,'mathdocs','https://math.workdocs.online')},
+  wykresy:{name:'Wykresy',w:940,h:600,big:true,render:(b,w)=>renderWeb(b,w,'wykresy','https://wykresy.workdocs.online')},
+  paybud:{name:'Pay Buddy',w:460,h:700,render:(b,w)=>renderWeb(b,w,'paybud','https://paybud.site')},
   photos:{name:'Zdjęcia',w:720,h:480,render:renderPhotos},
   music:{name:'Muzyka',w:700,h:470,render:renderMusic},
   notes:{name:'Notatki',w:660,h:430,render:renderNotes},
@@ -273,7 +273,7 @@ function renderPhotos(body,w){
 
 /* ================= PRZEGLĄDARKA + Work Docs / Math Docs ================= */
 function webFrame(url){
-  const f=el('iframe'); f.src=url; f.style.cssText='flex:1;width:100%;border:0;background:#fff;min-height:0';
+  const f=el('iframe'); f.src=url; f.style.cssText='position:relative;flex:1;width:100%;border:0;background:#fff;min-height:0';
   f.setAttribute('referrerpolicy','no-referrer'); f.setAttribute('allow','clipboard-write; fullscreen'); f.title=url; return f;
 }
 const SITE_APP={'workdocs.online':'workdocs','math.workdocs.online':'mathdocs','wykresy.workdocs.online':'wykresy','paybud.site':'paybud'};
@@ -282,11 +282,12 @@ const favHTML=host=>SITE_APP[host]&&LOGOS[SITE_APP[host]]?`<img src="${LOGOS[SIT
 
 /* okno aplikacji internetowej (Work Docs, Math Docs, Wykresy, Pay Buddy) */
 function renderWeb(body,w,id,url){
-  const main=el('div','main'), bar=el('div','bar'), hint=el('div','status');
-  bar.innerHTML=`<img src="${LOGOS[id]}" alt="" style="width:20px;height:20px;border-radius:5px"><b>${esc(APPS[id].name)}</b><span class="sp" style="font-weight:400;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(hostOf(url))}</span><button id="rl" aria-label="Odśwież">Odśwież</button><a class="tbtn" style="display:inline-grid;place-items:center;text-decoration:none;color:var(--fg)" href="${esc(url)}" target="_blank" rel="noopener">Otwórz w nowej karcie</a>`;
-  hint.textContent='Jeśli okno jest puste, ta wersja strony blokuje osadzanie. Użyj przycisku „Otwórz w nowej karcie”.';
-  let fr=webFrame(url); main.append(bar,fr,hint); body.append(main);
-  $('#rl',bar).onclick=()=>{const n=webFrame(url);fr.replaceWith(n);fr=n};
+  /* wygląda jak zwykła aplikacja: sama zawartość, bez paska adresu i dopisków */
+  const wrap=el('div','webapp',`<div class="wsplash"><img src="${LOGOS[id]}" alt=""><span></span></div>`);
+  $('.wsplash span',wrap).textContent=APPS[id].name;
+  let fr=webFrame(url); wrap.append(fr); body.append(wrap);
+  const reload=()=>{const n=webFrame(url);fr.replaceWith(n);fr=n};
+  w.menu=[['Odśwież',reload,'⌘R'],['Otwórz w przeglądarce',()=>openApp('browser',{url})]];
 }
 
 /* przeglądarka z kartami, zakładkami i historią */

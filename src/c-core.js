@@ -19,7 +19,7 @@ const LOGO_MARK=(s=14)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fil
 const LOGO=(s=14)=>`<span class="lgo" style="width:${s}px;height:${s}px">${LOGO_MARK(s).replace(/width="\d+" height="\d+"/,'width="100%" height="100%"')}<img src="logo.png" alt="" onload="this.parentNode.classList.add('has')" onerror="this.remove()"></span>`;
 
 /* ---------- ustawienia ---------- */
-const DEF={theme:null,wall:'1',accent:'#0a84ff',dockSize:58,magnify:true,dockHide:false,volume:60,brightness:100,sounds:true,user:'Gość',avatar:'#7d8794',dnd:false,wifi:true,bt:true,installed:[]};
+const DEF={theme:null,wall:'1',accent:'#0a84ff',dockSize:58,autoFs:true,magnify:true,dockHide:false,volume:60,brightness:100,sounds:true,user:'Gość',avatar:'#7d8794',dnd:false,wifi:true,bt:true,installed:[]};
 const S=Object.assign({},DEF,store.get('settings',{}));
 const saveS=()=>store.set('settings',S);
 const isDark=()=>root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
