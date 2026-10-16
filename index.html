@@ -111,8 +111,8 @@ button{font:inherit;color:inherit}
 .rs{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;touch-action:none;z-index:5}
 
 /* pulpit */
-#icons{position:absolute;top:36px;right:10px;bottom:100px;left:10px;display:flex;flex-direction:column;flex-wrap:wrap-reverse;align-content:flex-start;gap:6px;z-index:1;pointer-events:none}
-.di{width:84px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 2px;border-radius:6px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:auto;text-align:center;font-size:12px}
+#icons{position:absolute;inset:0;z-index:1;pointer-events:none}
+.di{position:absolute;width:84px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 2px;border-radius:6px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);pointer-events:auto;text-align:center;font-size:12px}
 .di svg{width:56px;height:48px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 .di svg.app{height:56px}
 .di span{padding:1px 5px;border-radius:4px;overflow-wrap:anywhere;max-width:100%;line-height:1.2}
@@ -121,7 +121,7 @@ button{font:inherit;color:inherit}
 @media (max-width:600px){.di{width:70px}.di svg{width:44px}}
 
 /* dock */
-#dock{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:700;display:flex;align-items:flex-end;gap:10px;padding:8px 12px;border-radius:26px;background:var(--dock);border:1px solid var(--dock-line);backdrop-filter:blur(36px) saturate(2);-webkit-backdrop-filter:blur(36px) saturate(2);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.06),0 24px 56px rgba(0,0,0,.38),0 2px 6px rgba(0,0,0,.18);transition:transform .3s cubic-bezier(.3,.8,.2,1);max-width:calc(100vw - 12px)}
+#dock{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:790;display:flex;align-items:flex-end;gap:10px;padding:8px 12px;border-radius:26px;background:var(--dock);border:1px solid var(--dock-line);backdrop-filter:blur(36px) saturate(2);-webkit-backdrop-filter:blur(36px) saturate(2);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -1px 0 rgba(0,0,0,.06),0 24px 56px rgba(0,0,0,.38),0 2px 6px rgba(0,0,0,.18);transition:transform .3s cubic-bezier(.3,.8,.2,1);max-width:calc(100vw - 12px)}
 #dock.hide{transform:translate(-50%,130%)}
 .dk{position:relative;flex:none;transition:width .09s ease-out,height .09s ease-out;display:block;border:0;background:none;padding:0}
 .dk svg.app{width:100%;height:100%;display:block;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))}
@@ -474,6 +474,21 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 @keyframes eq{0%,100%{height:3px}50%{height:14px}}
 .tr .tag{font-size:10px;border-radius:4px;padding:0 5px;background:var(--strong);margin-left:6px;color:var(--fg2)}
 .mctl button.on{background:var(--strong)}
+/* przeciąganie: dock, pulpit, karty */
+.dk.dragging{opacity:.25}
+.dk.ins-l::before,.dk.ins-r::before{content:"";position:absolute;top:2px;bottom:2px;width:3px;border-radius:3px;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.dk.ins-l::before{left:-7px}.dk.ins-r::before{right:-7px}
+.poof{position:fixed;width:72px;height:72px;pointer-events:none;z-index:970}
+.poof i{position:absolute;inset:10px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.95),rgba(220,225,235,.55) 55%,transparent 72%);animation:poof .62s ease-out forwards}
+.poof i:nth-child(2){animation-delay:.04s;inset:4px 20px 22px 4px}.poof i:nth-child(3){animation-delay:.07s;inset:22px 4px 4px 20px}
+.poof i:nth-child(4){animation-delay:.1s;inset:0 4px 30px 28px}.poof i:nth-child(5){animation-delay:.13s;inset:26px 26px 0 0}
+@keyframes poof{0%{transform:scale(.2);opacity:.95}60%{opacity:.8}100%{transform:scale(2.2);opacity:0}}
+.di.alias .ab{position:absolute;left:14px;top:38px;width:19px;height:19px;border-radius:50%;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 9V6.500A2.500 2.500 0 0 1 5.500 4H9M7 1.500 9.500 4 7 6.500' fill='none' stroke='%23222' stroke-width='1.600' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat;box-shadow:0 1px 4px rgba(0,0,0,.45)}
+.band{position:fixed;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 22%,transparent);z-index:1;pointer-events:none;border-radius:2px}
+.btab.dropt{box-shadow:inset 3px 0 var(--accent)}
+#screen.panic{background:#050505;align-items:flex-start;justify-content:flex-start;padding:8vh 7vw;color:#e8e8e8;font:14px/1.8 var(--mono);text-align:left}
+#screen .pn div{opacity:0;animation:fadein .01s forwards}
+#screen .pn div:first-child{color:#ff6b6b;font-weight:700}
 .eqm{display:inline-flex;gap:2px;align-items:flex-end;height:13px}
 .eqm i{width:3px;background:currentColor;border-radius:2px;animation:eq .9s ease-in-out infinite}
 .eqm i:nth-child(2){animation-delay:.2s}.eqm i:nth-child(3){animation-delay:.4s}
@@ -538,7 +553,7 @@ probeImg('sirilogo.jpg',()=>{MIRI_LOADED=true});
 const LOGO=(s=14)=>`<span class="lgo" style="width:${s}px;height:${s}px">${LOGO_MARK(s).replace(/width="\d+" height="\d+"/,'width="100%" height="100%"')}<img src="logo.png" alt="" onload="this.parentNode.classList.add('has')" onerror="this.remove()"></span>`;
 
 /* ---------- ustawienia ---------- */
-const DEF={theme:null,wall:'1',accent:'#0a84ff',dockSize:58,autoFs:true,magnify:true,dockHide:false,volume:60,brightness:100,sounds:true,user:'Gość',avatar:'#7d8794',dnd:false,wifi:true,bt:true,installed:[],miri:{wake:false,speak:true,style:'friendly',custom:'',endpoint:'/api/miri'}};
+const DEF={theme:null,wall:'1',accent:'#0a84ff',dockSize:58,autoFs:true,magnify:true,dockHide:false,volume:60,brightness:100,sounds:true,user:'Gość',avatar:'#7d8794',dnd:false,wifi:true,bt:true,installed:[],removed:[],repairNote:[],dockApps:['finder','launchpad','miri','browser','unnovation','photos','music','notes','reminders','calendar','appstore','terminal','settings'],miri:{wake:false,speak:true,style:'friendly',custom:'',endpoint:'/api/miri'}};
 const S=Object.assign({},DEF,store.get('settings',{}));
 S.miri=Object.assign({},DEF.miri,S.miri||{});
 const saveS=()=>store.set('settings',S);
@@ -633,6 +648,7 @@ const SFX={
   notify:t=>{tone(880,t,.25,'sine',.18);tone(1318,t+.12,.4,'sine',.16)},
   error:t=>tone(170,t,.25,'sawtooth',.14,110),
   chime:t=>[196,261.6,329.6,392,523.3].forEach((f,i)=>tone(f,t,2.6,'sine',.13-i*.01)),
+  poof:t=>{noiseBurst(t,.2,.22);tone(320,t,.14,'sine',.08,120)},
   miri:t=>{tone(660,t,.16,'sine',.14);tone(990,t+.09,.28,'sine',.12)},
   miriend:t=>{tone(880,t,.14,'sine',.1);tone(587,t+.08,.24,'sine',.1)},
   down:t=>[523.3,392,329.6,261.6].forEach((f,i)=>tone(f,t+i*.2,1.1,'sine',.11)),
@@ -719,7 +735,7 @@ const VFS=(()=>{
   function walk(p,fn){const n=get(p);fn(norm(p),n);if(n&&n.t==='d')for(const[k]of list(p))walk(norm(p)+'/'+k,fn)}
   function syncApps(){
     const a=get('/Applications'); a.c={};
-    const ids=[...BASE_APPS,...S.installed.filter(i=>APPS[i])];
+    const ids=[...BASE_APPS.filter(i=>!S.removed.includes(i)),...S.installed.filter(i=>APPS[i])];
     ids.forEach(id=>{a.c[APPS[id].name+'.app']=F('',{k:'app',app:id})});
     dirty();
   }
@@ -753,6 +769,7 @@ const dockSpace=()=>S.dockHide?12:S.dockSize+26;
 
 function openApp(id,opts={}){
   const a=APPS[id]; if(!a)return null;
+  const need=id==='about'?null:(REQ[id]||id); if(need&&!appAvail(need)){appMissing(need);return null}
   closeMenus(); closeSpot(); closeLaunchpad(); if(mcOn)exitMC();
   if(a.special){a.special();return null}
   const ex=winsOf(id).pop();
@@ -896,14 +913,13 @@ function exitMC(){
 $('#mcbg').onclick=exitMC;
 
 /* ---------- dock ---------- */
-const PINNED=['finder','launchpad','miri','browser','unnovation','photos','music','notes','reminders','calendar','appstore','terminal','settings'];
 const dl={}; /* postęp pobierania aplikacji z App Store (0..1) */
 const dockEl=id=>$(`#dock .dk[data-app="${id}"]`);
 const dockBase=()=>{const fit=Math.floor((innerWidth-48)/(dockIds().length+1))-8;return Math.max(24,Math.min(small()?38:S.dockSize,fit))};
 function dockIds(){
-  const ids=[...PINNED,...S.installed.filter(i=>APPS[i])];
+  const ids=S.dockApps.filter(i=>APPS[i]&&appAvail(i));
   Object.keys(dl).forEach(i=>{if(!ids.includes(i))ids.push(i)});
-  wins.forEach(w=>{if(!ids.includes(w.id)&&!APPS[w.id].nodock)ids.push(w.id)});
+  wins.forEach(w=>{if(!ids.includes(w.id)&&!APPS[w.id].nodock&&appAvail(w.id))ids.push(w.id)});
   return ids;
 }
 const storeTodo=()=>['workdocs','mathdocs','wykresy','paybud'].filter(i=>!S.installed.includes(i));
@@ -912,42 +928,141 @@ function dockProgress(id,p){
   let b=dockEl(id); if(!b){refreshDock();b=dockEl(id)} if(!b)return;
   b.classList.add('dling'); let r=$('.dlr',b); if(!r){r=el('div','dlr');b.append(r)} r.innerHTML=ringSVG(p);
 }
-/* kosz: aplikacje z App Store odinstalowuje, resztę przenosi do kosza */
+const WARN_ICON='<svg class="app" viewBox="0 0 60 60"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd24a"/><stop offset="1" stop-color="#ff9500"/></linearGradient></defs><path d="M30 5 57 52H3z" fill="url(#wg)" stroke="#e67e00" stroke-width="2" stroke-linejoin="round"/><rect x="27.5" y="20" width="5" height="19" rx="2.5" fill="#1d1d1f"/><circle cx="30" cy="45" r="3" fill="#1d1d1f"/></svg>';
+
+/* poof: obłoczek dymu, gdy ikona znika z docka */
+function poof(x,y){
+  const p=el('div','poof','<i></i><i></i><i></i><i></i><i></i>'); p.style.left=(x-36)+'px'; p.style.top=(y-36)+'px';
+  document.body.append(p); sfx('poof'); setTimeout(()=>p.remove(),700);
+}
+function addToDock(id,targetId,after){
+  if(!APPS[id]||!appAvail(id))return;
+  S.dockApps=S.dockApps.filter(x=>x!==id); const i=targetId?S.dockApps.indexOf(targetId):-1;
+  if(i<0)S.dockApps.push(id);else S.dockApps.splice(after?i+1:i,0,id);
+  saveS(); refreshDock();
+}
+function removeFromDock(id){S.dockApps=S.dockApps.filter(x=>x!==id);saveS();refreshDock()}
+
+/* ---------- usuwanie, przywracanie i awarie aplikacji systemowych ---------- */
+function removeSystemApp(id){
+  winsOf(id).forEach(closeWin); S.removed=[...new Set([...S.removed,id])]; S.dockApps=S.dockApps.filter(x=>x!==id); saveS();
+  try{VFS.write(TRASH+'/'+APPS[id].name+'.app','',false,{k:'app',app:id,sys:1})}catch(e){}
+  VFS.syncApps(); refreshDock(); drawIcons(); sfx('trash');
+}
+function restoreApp(id,silent){
+  S.removed=S.removed.filter(x=>x!==id);
+  if(BASE_APPS.includes(id)&&!S.dockApps.includes(id)){ /* wraca na swoje domyślne miejsce w docku */
+    const def=DEF.dockApps, di=def.indexOf(id); let at=-1;
+    if(di>=0)for(let k=di+1;k<def.length&&at<0;k++)at=S.dockApps.indexOf(def[k]);
+    if(at<0)S.dockApps.push(id);else S.dockApps.splice(at,0,id);
+  }
+  saveS();
+  try{const tn=VFS.get(TRASH);Object.keys(tn.c).forEach(k=>{const n=tn.c[k];if(n.k==='app'&&n.app===id&&n.sys)delete tn.c[k]})}catch(e){}
+  VFS.syncApps(); refreshDock(); drawIcons();
+  if(!silent)notify('Przywrócono „'+APPS[id].name+'”','Aplikacja znów jest dostępna.',id);
+}
+function trashApp(id){
+  if(!APPS[id])return;
+  if(S.installed.includes(id)){sfx('trash');uninstallApp(id);return}
+  if(!BASE_APPS.includes(id)||S.removed.includes(id))return;
+  const crit=CRITICAL.includes(id);
+  dialog({title:'Usunąć aplikację „'+APPS[id].name+'”?',msg:crit?'To krytyczna aplikacja systemowa. Gdy jakaś czynność będzie jej wymagać, system ulegnie awarii i uruchomi się ponownie.':'To aplikacja systemowa. Czynności, które jej wymagają, nie będą działać, dopóki nie przywrócisz jej z Kosza albo z App Store.',ic:WARN_ICON,buttons:[{label:'Anuluj',cancel:true},{label:'Przenieś do kosza',primary:true,cb:()=>removeSystemApp(id)}]});
+}
+let crashOpen=false;
+function appMissing(id){
+  if(!APPS[id]||crashOpen)return; const nm=APPS[id].name;
+  if(BASE_APPS.includes(id)&&CRITICAL.includes(id))return systemCrash(id);
+  if(BASE_APPS.includes(id)){
+    dialog({title:'Nie można otworzyć „'+nm+'”',msg:'Ta aplikacja została usunięta z systemu. Możesz ją przywrócić z Kosza albo z App Store.',ic:WARN_ICON,buttons:[{label:'OK',cancel:true},{label:'Przywróć',primary:true,cb:()=>restoreApp(id)}]});
+    return;
+  }
+  dialog({title:'Nie można otworzyć „'+nm+'”',msg:'Ta aplikacja nie jest zainstalowana. Pobierz ją w App Store.',ic:WARN_ICON,buttons:[{label:'OK',cancel:true},{label:'Otwórz App Store',primary:true,cb:()=>openApp('appstore')}]});
+}
+function systemCrash(id){
+  crashOpen=true; sfx('error'); const nm=APPS[id].name;
+  dialog({title:'Wystąpił błąd systemu',msg:'Do wykonania tej czynności potrzebna jest aplikacja systemowa „'+nm+'”, która została usunięta. System musi zostać uruchomiony ponownie, aby się naprawić.',ic:WARN_ICON,buttons:[{label:'Zignoruj',cancel:true,cb:()=>{crashOpen=false}},{label:'Uruchom ponownie',primary:true,cb:()=>{crashOpen=false;crashRestart(id)}}]});
+}
+function repairSystem(){
+  const fix=S.removed.filter(i=>CRITICAL.includes(i)&&BASE_APPS.includes(i)); fix.forEach(i=>restoreApp(i,true));
+  S.repairNote=fix.map(i=>APPS[i].name); saveS();
+}
+function crashRestart(id){
+  closeMenus(); closeLaunchpad(); closeSpot(); musicStop(); closeAll(); sessionOn=false; const nm=APPS[id].name;
+  const L=['Błąd krytyczny systemu (panic)','Brak wymaganej aplikacji systemowej: '+nm,'Zatrzymano wszystkie procesy.','Zapisywanie dziennika zdarzeń...','Uruchamianie naprawy systemu...'];
+  setScreen('panic','<div class="pn">'+L.map((l,i)=>`<div style="animation-delay:${i*.55}s">${esc(l)}</div>`).join('')+'</div>');
+  setTimeout(()=>{repairSystem();boot()},3600);
+}
+
+/* kosz: aplikacje z App Store odinstalowuje, systemowe usuwa po potwierdzeniu, resztę przenosi do kosza */
 function trashPath(p){
   const n=VFS.get(p); if(!n)return;
   if(n.k==='app'){
-    if(S.installed.includes(n.app)){sfx('trash');uninstallApp(n.app)}
-    else notify('Nie można usunąć','„'+APPS[n.app].name+'” jest aplikacją systemową.','finder');
-    return;
+    if(n.alias){sfx('trash');try{VFS.trash(p)}catch(e){}return}
+    trashApp(n.app); return;
   }
   if(p==='/'||p===HOME||p==='/Applications'){notify('Nie można usunąć','To jest folder systemowy.','finder');return}
   try{sfx('trash');VFS.trash(p)}catch(e){notify('Nie można usunąć',e.message,'finder')}
 }
 function trashFull(){const t=VFS.get(TRASH);return t&&Object.keys(t.c).length>0}
+
+/* przeciąganie ikon docka: zmiana kolejności, upuszczenie na kosz lub pulpit, wyrzucenie poza dock (poof) */
+let lastDrag=[0,0];
+document.addEventListener('dragover',e=>{lastDrag=[e.clientX,e.clientY]},true);
+const dockAccepts=e=>{const t=e.dataTransfer.types;return t.includes('text/x-dock')||t.includes('text/x-app')||t.includes('text/x-path')};
+function dockDrop(e,targetId,after){
+  const dt=e.dataTransfer; let ids=[]; const a=dt.getData('text/x-app');
+  if(a)ids=[a]; else(dt.getData('text/x-path')||'').split('\n').filter(Boolean).forEach(p=>{const n=VFS.get(p);if(n&&n.k==='app')ids.push(n.app)});
+  ids.forEach(id=>addToDock(id,targetId,after));
+}
+function dockDragEnd(e,id){
+  if(e.dataTransfer.dropEffect!=='none')return;
+  const x=e.clientX||lastDrag[0], y=e.clientY||lastDrag[1], r=$('#dock').getBoundingClientRect();
+  if(x<r.left-8||x>r.right+8||y<r.top-10||y>r.bottom+10){
+    if(S.dockApps.includes(id)){removeFromDock(id);poof(x,y)}
+  }
+}
 function refreshDock(){
   const d=$('#dock'); d.innerHTML=''; const B=dockBase();
-  const add=(id,label)=>{
+  const add=(id,label,fixed)=>{
     const b=el('button','dk'+(winsOf(id).length?' run':'')+(dl[id]!=null?' dling':''),icon(id)+'<i class="dot"></i>'+(dl[id]!=null?'<div class="dlr">'+ringSVG(dl[id])+'</div>':''));
     if(id==='appstore'&&storeTodo().length)b.append(el('i','badge',String(storeTodo().length)));
     b.dataset.app=id; b.dataset.label=label; b.style.width=b.style.height=B+'px'; b.setAttribute('aria-label',label);
+    if(fixed)return {b,d};
     b.onclick=()=>{sfx('click');openApp(id)};
+    b.draggable=id!=='finder';
+    b.ondragstart=e=>{
+      e.dataTransfer.setData('text/x-dock',id); e.dataTransfer.setData('text/x-app',id); e.dataTransfer.effectAllowed='copyMove';
+      const sv=$('svg',b); try{e.dataTransfer.setDragImage(sv,sv.clientWidth/2,sv.clientHeight/2)}catch(_){}
+      requestAnimationFrame(()=>b.classList.add('dragging'));
+    };
+    b.ondragend=e=>{b.classList.remove('dragging');dockDragEnd(e,id)};
+    b.ondragover=e=>{if(!dockAccepts(e))return;e.preventDefault();const r=b.getBoundingClientRect();b.classList.toggle('ins-l',e.clientX<r.left+r.width/2);b.classList.toggle('ins-r',e.clientX>=r.left+r.width/2)};
+    b.ondragleave=()=>b.classList.remove('ins-l','ins-r');
+    b.ondrop=e=>{e.preventDefault();e.stopPropagation();b.classList.remove('ins-l','ins-r');const r=b.getBoundingClientRect();dockDrop(e,id,e.clientX>=r.left+r.width/2)};
     b.oncontextmenu=e=>{
-      e.preventDefault(); const run=winsOf(id).length, a=APPS[id];
-      popMenu([[a.name,()=>{},'',{off:true}],'-',['Otwórz',()=>openApp(id)],...(run?[['Zakończ',()=>winsOf(id).forEach(closeWin)]]:[]),...(S.installed.includes(id)?[['Odinstaluj',()=>uninstallApp(id)]]:[])],e.clientX,e.clientY-120);
+      e.preventDefault(); const run=winsOf(id).length, a=APPS[id], pinned=S.dockApps.includes(id);
+      const items=[[a.name,()=>{},'',{off:true}],'-',['Otwórz',()=>openApp(id)],...(run?[['Zakończ',()=>winsOf(id).forEach(closeWin)]]:[]),'-',...(id!=='finder'?[[pinned?'Usuń z docka':'Zachowaj w docku',()=>pinned?removeFromDock(id):addToDock(id)]]:[]),['Pokaż w Finderze',()=>openApp('finder',{path:'/Applications'})],'-',['Przenieś do kosza',()=>trashApp(id)]];
+      popMenu(items,e.clientX,e.clientY-items.length*26-10);
     };
     d.append(b);
   };
   dockIds().forEach(id=>add(id,APPS[id].name));
-  d.append(el('div','dsep')); add(trashFull()?'trashfull':'trash','Kosz');
-  const t=d.lastChild; t.onclick=()=>openApp('finder',{path:TRASH});
-  t.ondragover=e=>{if(e.dataTransfer.types.includes('text/x-path')){e.preventDefault();t.classList.add('over')}};
+  d.append(el('div','dsep')); const tb=add(trashFull()?'trashfull':'trash','Kosz',true).b; d.append(tb);
+  const t=tb; t.onclick=()=>openApp('finder',{path:TRASH});
+  t.ondragover=e=>{if(dockAccepts(e)){e.preventDefault();t.classList.add('over')}};
   t.ondragleave=()=>t.classList.remove('over');
-  t.ondrop=e=>{e.preventDefault();t.classList.remove('over');e.dataTransfer.getData('text/x-path').split('\n').filter(Boolean).forEach(trashPath)};
-  t.oncontextmenu=e=>{e.preventDefault();popMenu([['Opróżnij kosz',emptyTrash,'',{off:!trashFull()}]],e.clientX,e.clientY-60)};
+  t.ondrop=e=>{
+    e.preventDefault(); e.stopPropagation(); t.classList.remove('over'); const a=e.dataTransfer.getData('text/x-app');
+    if(a){trashApp(a);return}
+    e.dataTransfer.getData('text/x-path').split('\n').filter(Boolean).forEach(trashPath);
+  };
+  t.oncontextmenu=e=>{e.preventDefault();popMenu([['Otwórz Kosz',()=>openApp('finder',{path:TRASH})],['Opróżnij kosz',emptyTrash,'',{off:!trashFull()}]],e.clientX,e.clientY-70)};
   dockMagnifyReset();
 }
 function emptyTrash(){sfx('trash');VFS.emptyTrash();notify('Kosz opróżniony','Wszystkie elementy zostały usunięte.','finder')}
 function dockMagnifyReset(){const B=dockBase();$$('#dock .dk').forEach(b=>b.style.width=b.style.height=B+'px')}
+$('#dock').addEventListener('dragover',e=>{if(dockAccepts(e)){e.preventDefault();e.stopPropagation()}});
+$('#dock').addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const last=[...$$('#dock .dk')].filter(b=>b.dataset.app!=='trash'&&b.dataset.app!=='trashfull').pop();dockDrop(e,last&&last.dataset.app,true)});
 $('#dock').addEventListener('pointermove',e=>{
   if(e.pointerType!=='mouse'||!S.magnify||small())return; const B=dockBase(), M=B*1.62;
   $$('#dock .dk').forEach(b=>{const r=b.getBoundingClientRect(),d=e.clientX-(r.left+r.width/2),s=B+(M-B)*Math.exp(-(d*d)/(2*58*58));b.style.width=b.style.height=s+'px'});
@@ -1065,7 +1180,7 @@ function spRender(){
   if(/^[\d\s+\-*/().,%^]+$/.test(q)&&/\d/.test(q)&&/[+\-*/%^]/.test(q)){
     try{const v=Function('"use strict";return('+q.replace(/,/g,'.').replace(/\^/g,'**')+')')();if(isFinite(v))spRows.push([icon('calc'),'= '+(+v.toPrecision(12)).toLocaleString('pl-PL',{maximumFractionDigits:10}),'Kalkulator',()=>openApp('calc')])}catch(e){}
   }
-  Object.keys(APPS).filter(k=>!APPS[k].nodock&&APPS[k].name.toLowerCase().includes(q)&&(BASE_APPS.includes(k)||S.installed.includes(k))).forEach(k=>spRows.push([icon(k),APPS[k].name,'Aplikacja',()=>openApp(k)]));
+  Object.keys(APPS).filter(k=>!APPS[k].nodock&&APPS[k].name.toLowerCase().includes(q)&&appAvail(k)).forEach(k=>spRows.push([icon(k),APPS[k].name,'Aplikacja',()=>openApp(k)]));
   let found=0;
   VFS.walk(HOME,(p,n)=>{if(found>=6||!n||p===HOME||p.startsWith(TRASH))return;const nm=p.split('/').pop();if(nm.startsWith('.'))return;if(nm.toLowerCase().includes(q)){found++;spRows.push([n.t==='d'?folderSVG:fileSVG(n.k==='img'?'img':'doc'),nm,n.t==='d'?'Folder':'Dokument',()=>openNode(p)])}});
   if(/ciemn|dark|motyw/.test(q))spRows.push(['','Przełącz tryb ciemny','Ustawienie',toggleTheme]);
@@ -1084,13 +1199,14 @@ $('#fsbtn').onclick=e=>{e.stopPropagation();toggleFullscreen()};
 function closeLaunchpad(){const l=$('#launch');if(l)l.remove()}
 function openLaunchpad(){
   if($('#launch')){closeLaunchpad();return}
+  if(!appAvail('launchpad')){appMissing('launchpad');return}
   closeMenus(); const o=el('div'); o.id='launch';
   o.innerHTML='<input placeholder="Szukaj" aria-label="Szukaj aplikacji" autocomplete="off"><div class="lgrid"></div>'; document.body.append(o);
   const draw=q=>{
     const g=$('.lgrid',o); g.innerHTML='';
-    [...BASE_APPS,...S.installed].filter((id,i,a)=>APPS[id]&&!APPS[id].special&&a.indexOf(id)===i&&APPS[id].name.toLowerCase().includes(q)).forEach((id,i)=>{
+    [...BASE_APPS,...S.installed].filter((id,i,a)=>APPS[id]&&!APPS[id].special&&appAvail(id)&&a.indexOf(id)===i&&APPS[id].name.toLowerCase().includes(q)).forEach((id,i)=>{
       const it=el('div','li',icon(id)+'<span></span>'); $('span',it).textContent=APPS[id].name; it.style.animationDelay=(i*18)+'ms';
-      it.onclick=e=>{e.stopPropagation();closeLaunchpad();openApp(id)}; g.append(it);
+      it.onclick=e=>{e.stopPropagation();closeLaunchpad();openApp(id)}; it.draggable=true; it.ondragstart=e=>{e.dataTransfer.setData('text/x-app',id);e.dataTransfer.effectAllowed='copy'}; g.append(it);
     });
   };
   draw(''); const i=$('input',o); i.focus(); i.oninput=()=>draw(i.value.trim().toLowerCase());
@@ -1184,7 +1300,8 @@ function unlock(){
   if(!sessionOn){sessionOn=true;startSession()}
 }
 function startSession(){
-  openApp('finder'); setTimeout(()=>notify('Witaj, '+S.user,'System jest gotowy. Naciśnij Ctrl + Spacja, aby wyszukać.','finder'),900);
+  if(S.repairNote&&S.repairNote.length){const rn=S.repairNote.join(', ');S.repairNote=[];saveS();setTimeout(()=>notify('System naprawiony','Po awarii przywrócono brakujące aplikacje systemowe: '+rn+'.'),1500)}
+  if(appAvail('finder'))openApp('finder'); setTimeout(()=>notify('Witaj, '+S.user,'System jest gotowy. Naciśnij Ctrl + Spacja, aby wyszukać.','finder'),900);
   if(storeTodo().length)setTimeout(()=>notify('Nowe w App Store','Pobierz Work Docs, Math Docs, Wykresy i Pay Buddy. Kliknij, aby otworzyć.','appstore',()=>openApp('appstore')),5600);
 }
 function wakeOnce(next){
@@ -1220,17 +1337,40 @@ function forceQuit(){
   dialog({title:'Wymuś zakończenie programu',msg:'Wybierz aplikację do zamknięcia.',body,buttons:[{label:'Anuluj',cancel:true},{label:'Wymuś zakończenie',primary:true,cb:()=>{if(sel)winsOf(sel).forEach(closeWin)}}]});
 }
 
-/* ---------- pulpit: ikony, menu kontekstowe, upuszczanie plików ---------- */
+/* ---------- pulpit: swobodne ikony, zaznaczanie ramką, skróty, upuszczanie plików i aplikacji ---------- */
+const deskPos=()=>store.get('deskpos',{});
+const saveDeskPos=p=>store.set('deskpos',p);
+function iconDefaultPos(i){const rows=Math.max(1,Math.floor((innerHeight-MB-110)/96));return[innerWidth-92-Math.floor(i/rows)*92,MB+10+(i%rows)*96]}
+const clampPos=([x,y])=>[Math.max(0,Math.min(innerWidth-86,x)),Math.max(MB,Math.min(innerHeight-110,y))];
+function makeAlias(id,x,y){
+  if(!APPS[id])return; let nm=APPS[id].name, k=1;
+  while(VFS.get(HOME+'/Desktop/'+nm)){k++;nm=APPS[id].name+' alias'+(k>2?' '+(k-1):'')}
+  VFS.write(HOME+'/Desktop/'+nm,'',false,{k:'app',app:id,alias:1});
+  const pos=deskPos(); pos[nm]=[x,y]; saveDeskPos(pos); drawIcons();
+}
 function drawIcons(){
-  const box=$('#icons'); box.innerHTML='';
+  const box=$('#icons'); box.innerHTML=''; const pos=deskPos(); let auto=0;
   const items=[['MGS HD','/',{t:'d',disk:1}],...VFS.list(HOME+'/Desktop').filter(([n])=>!n.startsWith('.')).map(([n,node])=>[n,HOME+'/Desktop/'+n,node])];
   items.forEach(([n,p,node])=>{
+    const key=node.disk?'__disk':n, alias=!!node.alias;
     const ico=node.disk?diskSVG:node.t==='d'?folderSVG:node.k==='app'?icon(node.app):fileSVG(node.k==='img'?'img':'doc');
-    const d=el('div','di',ico+'<span></span>'); $('span',d).textContent=n; d.draggable=!node.disk; d.dataset.path=p;
-    d.onclick=e=>{e.stopPropagation();$$('.di').forEach(x=>x.classList.remove('sel'));d.classList.add('sel')};
+    const d=el('div','di'+(alias?' alias':''),ico+(alias?'<i class="ab"></i>':'')+'<span></span>'); $('span',d).textContent=n; d.draggable=!node.disk; d.dataset.path=p; d.dataset.key=key;
+    const xy=clampPos(pos[key]||iconDefaultPos(auto)); if(!pos[key])auto++; d.style.left=xy[0]+'px'; d.style.top=xy[1]+'px';
+    d.onclick=e=>{
+      e.stopPropagation();
+      if(e.ctrlKey||e.metaKey)d.classList.toggle('sel'); else{$$('.di').forEach(x=>x.classList.remove('sel'));d.classList.add('sel')}
+    };
     d.ondblclick=()=>openNode(p);
-    d.ondragstart=e=>{e.dataTransfer.setData('text/x-path',p);e.dataTransfer.effectAllowed='move'};
-    d.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();d.click();popMenu([['Otwórz',()=>openNode(p)],...(node.disk?[]:[['Przenieś do kosza',()=>trashPath(p)]])],e.clientX,e.clientY)};
+    d.ondragstart=e=>{
+      if(!d.classList.contains('sel')){$$('.di').forEach(x=>x.classList.remove('sel'));d.classList.add('sel')}
+      const sel=$$('.di.sel').filter(x=>x.dataset.path!=='/'), items_={};
+      sel.forEach(x=>items_[x.dataset.key]=[parseFloat(x.style.left),parseFloat(x.style.top)]);
+      e.dataTransfer.setData('text/x-path',sel.map(x=>x.dataset.path).join('\n')); e.dataTransfer.setData('text/x-pos',JSON.stringify({mx:e.clientX,my:e.clientY,items:items_})); e.dataTransfer.effectAllowed='move';
+    };
+    d.oncontextmenu=e=>{
+      e.preventDefault();e.stopPropagation();if(!d.classList.contains('sel')){$$('.di').forEach(x=>x.classList.remove('sel'));d.classList.add('sel')}
+      popMenu([['Otwórz',()=>openNode(p)],...(alias?[['Pokaż oryginał',()=>openApp('finder',{path:'/Applications'})]]:[]),...(node.disk?[]:['-',[alias?'Usuń skrót':'Przenieś do kosza',()=>trashPath(p)]])],e.clientX,e.clientY);
+    };
     box.append(d);
   });
 }
@@ -1243,14 +1383,40 @@ function newItem(dir,kind){
 }
 $('#desk').addEventListener('contextmenu',e=>{
   if(e.target.closest('.win,#dock,#menubar,.di'))return;
-  e.preventDefault(); popMenu([['Nowy folder',()=>newItem(HOME+'/Desktop','dir')],['Nowy dokument tekstowy',()=>newItem(HOME+'/Desktop','file')],'-',['Zapytaj Miri…',()=>miriOpen({focus:true})],['Otwórz Terminal',()=>openApp('terminal',{new:true})],['Zmień tapetę…',()=>openApp('settings',{pane:'wall'})]],e.clientX,e.clientY);
+  e.preventDefault(); popMenu([['Nowy folder',()=>newItem(HOME+'/Desktop','dir')],['Nowy dokument tekstowy',()=>newItem(HOME+'/Desktop','file')],'-',['Uporządkuj ikony',()=>{saveDeskPos({});drawIcons()}],['Zapytaj Miri…',()=>miriOpen({focus:true})],['Otwórz Terminal',()=>openApp('terminal',{new:true})],['Zmień tapetę…',()=>openApp('settings',{pane:'wall'})]],e.clientX,e.clientY);
 });
-$('#desk').addEventListener('click',e=>{if(!e.target.closest('.di'))$$('.di').forEach(x=>x.classList.remove('sel'))});
-$('#desk').addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('text/x-path'))e.preventDefault()});
+/* zaznaczanie ramką */
+let bandDone=false;
+$('#desk').addEventListener('pointerdown',e=>{
+  if(e.button!==0||e.target.id!=='desk')return; closeMenus();
+  const sx=e.clientX, sy=e.clientY, add=e.ctrlKey||e.metaKey, pre=new Set($$('.di.sel').map(d=>d.dataset.key)); if(!add)$$('.di').forEach(x=>x.classList.remove('sel'));
+  const band=el('div','band'); $('#desk').append(band); let moved=false;
+  const mv=ev=>{
+    const x1=Math.min(sx,ev.clientX), y1=Math.min(sy,ev.clientY), x2=Math.max(sx,ev.clientX), y2=Math.max(sy,ev.clientY);
+    if(x2-x1>3||y2-y1>3)moved=true; Object.assign(band.style,{left:x1+'px',top:y1+'px',width:(x2-x1)+'px',height:(y2-y1)+'px'});
+    $$('.di').forEach(d=>{const r=d.getBoundingClientRect();d.classList.toggle('sel',!(r.right<x1||r.left>x2||r.bottom<y1||r.top>y2)||(add&&pre.has(d.dataset.key)))});
+  };
+  const up=()=>{removeEventListener('pointermove',mv);band.remove();if(moved){bandDone=true;setTimeout(()=>bandDone=false,60)}};
+  addEventListener('pointermove',mv); addEventListener('pointerup',up,{once:true});
+});
+$('#desk').addEventListener('click',e=>{if(!e.target.closest('.di')&&!bandDone)$$('.di').forEach(x=>x.classList.remove('sel'))});
+$('#desk').addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('#dock'))return;const t=e.dataTransfer.types;if(t.includes('text/x-path')||t.includes('text/x-app')){e.preventDefault();e.dataTransfer.dropEffect=t.includes('text/x-app')?'copy':'move'}});
 $('#desk').addEventListener('drop',e=>{
-  const p=e.dataTransfer.getData('text/x-path'); if(!p)return; e.preventDefault();
-  try{VFS.mv(p,HOME+'/Desktop')}catch(err){notify('Nie można przenieść',err.message,'finder')}
+  if(e.target.closest&&e.target.closest('#dock'))return; /* upuszczenie na dock obsługuje dock (kolejność, kosz) */
+  const dt=e.dataTransfer, app=dt.getData('text/x-app');
+  if(app){e.preventDefault();makeAlias(app,...clampPos([e.clientX-42,e.clientY-30]));return}
+  const raw=dt.getData('text/x-path'); if(!raw)return; e.preventDefault();
+  let meta=null; try{meta=JSON.parse(dt.getData('text/x-pos')||'null')}catch(_){}
+  const dx=meta?e.clientX-meta.mx:0, dy=meta?e.clientY-meta.my:0, pos=deskPos();
+  raw.split('\n').filter(Boolean).forEach((p,i)=>{
+    const n=VFS.get(p); if(!n)return; const[dir,name]=VFS.split(p);
+    if(dir===HOME+'/Desktop'){const old=meta&&meta.items[name];pos[name]=clampPos(old?[old[0]+dx,old[1]+dy]:[e.clientX-42+i*12,e.clientY-30+i*12]);return}
+    if(n.k==='app'&&p.startsWith('/Applications/')){makeAlias(n.app,...clampPos([e.clientX-42+i*92,e.clientY-30]));return}
+    try{VFS.mv(p,HOME+'/Desktop');pos[name]=clampPos([e.clientX-42+i*92,e.clientY-30])}catch(err){notify('Nie można przenieść',err.message,'finder')}
+  });
+  saveDeskPos(pos); drawIcons();
 });
+addEventListener('resize',drawIcons);
 on('fs',drawIcons);
 on('assets',()=>{refreshDock();buildMenubar();drawIcons()});
 
@@ -1336,6 +1502,11 @@ const APPS={
 };
 const BASE_APPS=['finder','launchpad','miri','browser','unnovation','photos','music','notes','reminders','calendar','appstore','terminal','settings','calc','clock','textedit','activity'];
 
+/* aplikacje krytyczne: ich brak powoduje awarię systemu; REQ: która aplikacja jest potrzebna do otwarcia danej */
+const CRITICAL=['finder','settings','appstore'];
+const REQ={preview:'photos'};
+const appAvail=id=>(BASE_APPS.includes(id)&&!S.removed.includes(id))||S.installed.includes(id);
+
 /* ---------- otwieranie elementów systemu plików ---------- */
 function openNode(p){
   const n=VFS.get(p); if(!n)return; const name=p.split('/').pop();
@@ -1376,7 +1547,7 @@ function renderFinder(body,w,opts){
   function itemMenu(name,node,e){
     const p=full(name);
     const items=[['Otwórz',()=>openNode(p)],'-',['Kopiuj',()=>{fileClip=p}],['Zmień nazwę…',()=>rename(name)],['Informacje',()=>info(name,node)],'-'];
-    if(inTrash()){items.push(['Usuń natychmiast',()=>{sfx('trash');VFS.rm(p,true)}]);items.push(['Włóż z powrotem na Pulpit',()=>VFS.mv(p,HOME+'/Desktop')])}
+    if(inTrash()){items.push(['Usuń natychmiast',()=>{sfx('trash');VFS.rm(p,true)}]);items.push(node.sys?['Przywróć aplikację',()=>restoreApp(node.app)]:['Włóż z powrotem na Pulpit',()=>VFS.mv(p,HOME+'/Desktop')])}
     else items.push(['Przenieś do kosza',()=>trashSel(name)]);
     popMenu(items,e.clientX,e.clientY);
   }
@@ -1587,6 +1758,9 @@ function renderBrowser(body,w,opts){
     tabs.forEach(t=>{
       const host=t.url?hostOf(t.url):'', d=el('div','btab'+(t===cur?' on':''),(host?favHTML(host):'<i>+</i>')+'<span></span><button aria-label="Zamknij kartę">×</button>');
       $('span',d).textContent=t.title; d.onclick=()=>select(t);
+      d.draggable=true; d.ondragstart=e=>{e.dataTransfer.setData('text/x-tab',String(tabs.indexOf(t)));e.dataTransfer.effectAllowed='move'};
+      d.ondragover=e=>{if(e.dataTransfer.types.includes('text/x-tab')){e.preventDefault();d.classList.add('dropt')}}; d.ondragleave=()=>d.classList.remove('dropt');
+      d.ondrop=e=>{e.preventDefault();d.classList.remove('dropt');const from=+e.dataTransfer.getData('text/x-tab'),to=tabs.indexOf(t);if(from>=0&&from!==to){const[m]=tabs.splice(from,1);tabs.splice(to,0,m);drawTabs()}};
       $('button',d).onclick=e=>{e.stopPropagation();closeTab(t,d)}; tabsBar.append(d);
     });
     const p=el('button','btnew','+'); p.setAttribute('aria-label','Nowa karta'); p.onclick=()=>newTab(); tabsBar.append(p);
@@ -2221,9 +2395,11 @@ function renderSettings(body,w,opts){
     side.innerHTML=''; PANES.forEach(([k,l])=>{const s=el('div','sl'+(pane===k?' on':''));s.textContent=l;s.onclick=()=>{pane=k;draw()};side.append(s)});
     set.innerHTML=''; const h=el('h2'); h.textContent=PANES.find(p=>p[0]===pane)[1]; set.append(h);
     if(pane==='general'){
-      set.append(card(row('System',el('span','','' + SYS+' 1.0')),row('Użytkownik',el('span','',esc(S.user))),row('Zainstalowane aplikacje',el('span','',String(BASE_APPS.length+S.installed.length)))));
+      set.append(card(row('System',el('span','','' + SYS+' 1.0')),row('Użytkownik',el('span','',esc(S.user))),row('Dostępne aplikacje',el('span','',String([...BASE_APPS,...S.installed].filter(appAvail).length)))));
       const rb=el('button','btn','Przywróć ustawienia fabryczne…'); rb.onclick=()=>dialog({title:'Przywrócić ustawienia fabryczne?',msg:'Usunie wszystkie pliki, notatki, ustawienia i pobrane aplikacje z tej przeglądarki. Nie da się tego cofnąć.',buttons:[{label:'Anuluj',cancel:true},{label:'Przywróć',primary:true,cb:()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('mw_')).forEach(k=>localStorage.removeItem(k))}catch(e){}location.reload()}}]});
       set.append(rb);
+      const rs=el('button','btn','Przywróć usunięte aplikacje systemowe'); rs.disabled=!S.removed.length; rs.style.marginLeft='8px';
+      rs.onclick=()=>{[...S.removed].forEach(i=>restoreApp(i,true));notify('Przywrócono aplikacje','Aplikacje systemowe są znów dostępne.','settings');draw()}; set.append(rs);
     }
     if(pane==='look'){
       const accs=el('div','accs'); accs.style.padding='0'; ['#0a84ff','#bf5af2','#ff375f','#ff9f0a','#30d158','#64d2ff'].forEach(c=>{const b=el('button',S.accent===c?'on':'');b.style.background=c;b.setAttribute('aria-label','Akcent '+c);b.onclick=()=>{S.accent=c;saveS();applySettings();draw()};accs.append(b)});
@@ -2281,17 +2457,17 @@ function downloadApp(id){
 }
 function installApp(id){
   if(S.installed.includes(id))return;
-  S.installed.push(id); saveS(); VFS.syncApps(); refreshDock(); emit('store');
+  S.installed.push(id); if(!S.dockApps.includes(id))S.dockApps.push(id); saveS(); VFS.syncApps(); refreshDock(); emit('store');
   notify('Zainstalowano „'+APPS[id].name+'”','Aplikacja jest gotowa. Znajdziesz ją w Launchpadzie i w docku.',id);
 }
 function uninstallApp(id){
-  winsOf(id).forEach(closeWin); S.installed=S.installed.filter(i=>i!==id); saveS(); VFS.syncApps(); refreshDock(); emit('store');
+  winsOf(id).forEach(closeWin); S.installed=S.installed.filter(i=>i!==id); S.dockApps=S.dockApps.filter(i=>i!==id); saveS(); VFS.syncApps(); refreshDock(); emit('store');
   notify('Usunięto „'+APPS[id].name+'”','Aplikacja została odinstalowana.','appstore');
 }
 function renderAppStore(body,w){
   const side=el('div','side'), box=el('div','store'); body.append(side,box);
   let tab='all', detail=null;
-  const TABS=[['all','Odkrywaj'],...[...new Set(STORE.map(s=>s.cat))].map(c=>[c,c]),['inst','Zainstalowane']];
+  const TABS=()=>[['all','Odkrywaj'],...[...new Set(STORE.map(s=>s.cat))].map(c=>[c,c]),['inst','Zainstalowane'],...(S.removed.length?[['sys','Systemowe']]:[])];
   const stars=r=>'★'.repeat(Math.round(r))+'☆'.repeat(5-Math.round(r));
   function ring(p){return`<svg class="ring" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="var(--strong)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="${62.8*p} 62.8" transform="rotate(-90 13 13)"/></svg>`}
   function button(s){
@@ -2310,7 +2486,7 @@ function renderAppStore(body,w){
   }
   function draw(){
     side.innerHTML='<h6>App Store</h6>';
-    TABS.forEach(([k,l])=>{const s=el('div','sl'+(!detail&&tab===k?' on':''));s.textContent=l;s.onclick=()=>{tab=k;detail=null;draw()};side.append(s)});
+    TABS().forEach(([k,l])=>{const s=el('div','sl'+(!detail&&tab===k?' on':''));s.textContent=l;s.onclick=()=>{tab=k;detail=null;draw()};side.append(s)});
     box.innerHTML='';
     if(detail){
       const s=detail, back=el('button','tbtn','‹ Wróć'); back.onclick=()=>{detail=null;draw()}; box.append(back);
@@ -2320,6 +2496,15 @@ function renderAppStore(body,w){
       const d=el('p'); d.style.cssText='line-height:1.5;margin:16px 0'; d.textContent=s.desc; box.append(d);
       const sh=el('div','shots'); [0,1,2].forEach(k=>{const x=el('div');x.style.background=`linear-gradient(${135+k*40}deg,${s.shot[0]},${s.shot[1]})`;x.style.display='grid';x.style.placeItems='center';x.innerHTML=icon(s.id).replace('<svg class="app"','<svg class="app" style="width:'+(60+k*10)+'px;height:'+(60+k*10)+'px;opacity:.9"');sh.append(x)}); box.append(sh);
       if(S.installed.includes(s.id)){const rm=el('button','btn','Odinstaluj');rm.onclick=()=>{uninstallApp(s.id);draw()};box.append(rm)}
+      return;
+    }
+    if(tab==='sys'){
+      const h0=el('h3'); h0.style.cssText='margin:0 0 4px;font-size:18px'; h0.textContent='Usunięte aplikacje systemowe'; box.append(h0);
+      if(!S.removed.length)box.append(el('div','empty','Wszystkie aplikacje systemowe są na miejscu.'));
+      S.removed.forEach(id=>{
+        const r=el('div','sapp',icon(id)+'<div class="tx"><b></b><span>Aplikacja systemowa</span></div>'); $('b',r).textContent=APPS[id].name;
+        const b=el('button','get','Przywróć'); b.onclick=()=>{restoreApp(id);draw()}; r.append(b); box.append(r);
+      });
       return;
     }
     if(tab==='all'){
@@ -2688,7 +2873,6 @@ function resolveApp(q){
   for(const id of Object.keys(APPS))if(miriNorm(APPS[id].name)===q)return id;
   return appFromText(q);
 }
-const appAvail=id=>BASE_APPS.includes(id)||S.installed.includes(id);
 const appListText=()=>[...BASE_APPS,...S.installed].filter(i=>APPS[i]&&!APPS[i].special).slice(0,8).map(i=>APPS[i].name).join(', ');
 
 /* Wspólny wykonawca: to samo wywołują umiejętności lokalne i narzędzia AI. Zwraca prawdziwy wynik. */
@@ -2697,6 +2881,7 @@ function miriDo(name,inp){
   switch(name){
     case 'open_app':{
       const id=resolveApp(inp.app); if(!id||!APPS[id])return failR('Nie znam aplikacji „'+String(inp.app||'').slice(0,40)+'”.');
+      if(!appAvail(id)&&BASE_APPS.includes(id)){openApp(id);return failR('Aplikacja '+APPS[id].name+' została usunięta z systemu. Możesz ją przywrócić z Kosza.')}
       if(!appAvail(id)){openApp('appstore');return failR('Aplikacja '+APPS[id].name+' nie jest jeszcze pobrana. Otwieram App Store, tam ją pobierzesz.')}
       openApp(id); return okR('Otwieram '+APPS[id].name+'.');
     }
@@ -3016,6 +3201,7 @@ function miriInit(){
 
 /* ================= START ================= */
 S.installed=S.installed.filter(i=>APPS[i]);
+if(!S.dockMigrated){S.installed.forEach(i=>{if(!S.dockApps.includes(i))S.dockApps.push(i)});S.dockMigrated=true;saveS()}
 VFS.syncApps(); applySettings(); buildMenubar(); refreshDock(); drawIcons(); miriInit();
 if(S.wall==='auto')setInterval(applySettings,600000);
 boot();
