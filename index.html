@@ -2477,7 +2477,7 @@ Object.assign(APPS,{
 const MiriS={pending:null,open:false,state:'idle',level:0,transcript:'',reply:'',chat:null,wakeRec:null,capRec:null,capturing:false,autoClose:false,closeT:null};
 const SRC=window.SpeechRecognition||window.webkitSpeechRecognition;
 const miriNorm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');
-const NO_AI='Nie mogę teraz połączyć się z AI. Ta funkcja działa po wdrożeniu strony na Vercel z kluczem ANTHROPIC_API_KEY. Polecenia lokalne, jak otwieranie aplikacji, godzina czy muzyka, działają bez tego.';
+const NO_AI='Nie mogę teraz odpowiedzieć na to pytanie. Mogę za to otwierać aplikacje, zapisywać notatki, ustawiać minutniki i włączać muzykę.';
 const MIC_SVG='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"/><path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2"/></svg>';
 
 /* ---------- orb: animowane fale w kuli (własny rysunek) ---------- */
@@ -2592,6 +2592,7 @@ function miriStartWake(){
   const r=new SRC(); r.lang='pl-PL'; r.continuous=true; r.interimResults=true; MiriS.wakeRec=r;
   r.onresult=e=>{
     let txt=''; for(let i=e.resultIndex;i<e.results.length;i++)txt+=e.results[i][0].transcript+' ';
+    try{if(speechSynthesis.speaking||Date.now()-(MiriS.spokeAt||0)<1200)return}catch(er){}
     const m=WAKE_RE.exec(txt); if(!m)return;
     const rest=txt.slice(m.index+m[0].length).replace(/^[\s,.!]+/,'').trim();
     miriStopWake(); miriOpen({auto:true}); sfx('miri');
@@ -2612,22 +2613,27 @@ function miriSetWake(on){
 function miriCancelListen(){const r=MiriS.capRec;MiriS.capRec=null;MiriS.capturing=false;if(r){r.onend=null;r.onresult=null;r.onerror=null;try{r.abort()}catch(e){}}if(MiriS.state==='listening')setState('idle')}
 function miriListen(){
   if(!SRC){setReply('Ta przeglądarka nie obsługuje rozpoznawania mowy. Użyj Chrome lub Edge albo napisz pytanie w polu.');return}
-  if(MiriS.capturing)return; miriStopWake(); MiriS.capturing=true; MiriS.transcript=''; MiriS.reply=''; setState('listening'); sfx('miri');
+  if(MiriS.capturing)return;
+  try{if(speechSynthesis.speaking){setTimeout(miriListen,500);return}}catch(er){}
+  if(Date.now()-(MiriS.spokeAt||0)<900){setTimeout(miriListen,900);return}
+  miriStopWake(); MiriS.capturing=true; MiriS.transcript=''; MiriS.reply=''; setState('listening'); sfx('miri');
   const r=new SRC(); r.lang='pl-PL'; r.interimResults=true; r.continuous=false; MiriS.capRec=r; let fin='';
   r.onresult=e=>{let itm='';for(let i=e.resultIndex;i<e.results.length;i++){const res=e.results[i];if(res.isFinal)fin+=res[0].transcript;else itm+=res[0].transcript}MiriS.transcript=fin+itm;miriUI()};
   r.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){notify('Mikrofon','Zezwól na użycie mikrofonu w przeglądarce.','miri');S.miri.wake=false;saveS()}};
   r.onend=()=>{
     if(MiriS.capRec!==r)return; MiriS.capRec=null; MiriS.capturing=false; const t=(fin||MiriS.transcript).trim();
+    if(t&&miriEcho(t)){setState('idle');MiriS.transcript='';miriUI();miriScheduleClose();miriStartWake();return}
     if(t)miriHandle(t,{panel:true,voice:true}); else{setState('idle');MiriS.transcript='';miriUI();miriScheduleClose();miriStartWake()}
   };
   try{r.start()}catch(e){MiriS.capturing=false;MiriS.capRec=null;setState('idle')}
 }
+function miriEcho(t){const f=s=>miriNorm(s).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(),a=f(t),b=f(MiriS.lastSpoken||'');return a.length>=3&&b.length>0&&Date.now()-(MiriS.spokeAt||0)<8000&&b.includes(a)}
 function miriSpeak(text,done){
   if(!S.miri.speak||!window.speechSynthesis){done&&done();return}
   try{
     speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.replace(/[*_`#]/g,'')); u.lang='pl-PL';
     const v=speechSynthesis.getVoices().find(x=>/^pl/i.test(x.lang)); if(v)u.voice=v; u.rate=1.03;
-    let fired=false; const end=()=>{if(fired)return;fired=true;done&&done()};
+    MiriS.lastSpoken=text; let fired=false; const end=()=>{if(fired)return;fired=true;MiriS.spokeAt=Date.now();done&&done()};
     u.onstart=()=>setState('speaking'); u.onend=end; u.onerror=end; speechSynthesis.speak(u);
   }catch(e){done&&done()}
 }
@@ -2709,7 +2715,7 @@ function miriDo(name,inp){
       const q=miriNorm(String(inp.query||'')).trim();
       if(q.length>=2){
         const i=TRACKS.findIndex(t=>(!t.file||t.ok!==false)&&miriNorm(t.name).includes(q));
-        if(i<0)return failR('Nie mam utworu „'+String(inp.query).slice(0,40)+'”. Mam m.in.: '+TRACKS.filter(t=>!t.file||t.ok!==false).slice(0,4).map(t=>t.name).join(', ')+'.');
+        if(i<0)return failR('Nie mam utworu „'+String(inp.query).slice(0,40)+'”.');
         musicPlay(i); return okR('Gram: '+TRACKS[i].name+'.');
       }
       if(Music.cur==null)musicPlay(Math.random()*GEN.length|0);else if(!Music.playing)musicToggle();
@@ -2720,7 +2726,7 @@ function miriDo(name,inp){
       const list=WALLS.filter(x=>x.id!=='custom');
       const q=miriNorm(String(inp.name||'')).trim(); let w=q.length>2?list.find(x=>miriNorm(x.name).includes(q)||q.includes(miriNorm(x.name))):null;
       if(!w&&(inp.next||!q)){const i=list.findIndex(x=>x.id===S.wall);w=list[(i+1)%list.length]}
-      if(!w)return failR('Nie mam tapety „'+String(inp.name).slice(0,30)+'”. Dostępne m.in.: Zorza, Ocean, Neon, Lawa, Sakura.');
+      if(!w)return failR('Nie mam tapety „'+String(inp.name).slice(0,30)+'”.');
       S.wall=w.id; saveS(); applyWall(); return okR('Ustawiam tapetę „'+w.name+'”.');
     }
     case 'set_volume':{
@@ -2738,7 +2744,7 @@ function miriDo(name,inp){
     }
     case 'install_app':{
       const id=resolveApp(inp.app); const st=id&&STORE.find(s=>s.id===id);
-      if(!st)return failR('Nie mam takiej aplikacji w App Store. Są: '+STORE.slice(0,5).map(s=>s.name).join(', ')+'.');
+      if(!st)return failR('Nie mam takiej aplikacji w App Store.');
       if(S.installed.includes(id))return failR(st.name+' jest już pobrana.');
       if(dl[id]!=null)return failR(st.name+' już się pobiera.');
       downloadApp(id); return okR('Pobieram '+st.name+'. Postęp widać w docku.');
@@ -2769,14 +2775,16 @@ function miriDo(name,inp){
   }
   return failR('Nie znam polecenia „'+name+'”.');
 }
-const miriSummary=acts=>acts.map(a=>{try{return miriDo(a.name,a.input).msg}catch(e){return 'Nie udało się wykonać polecenia.'}}).join(' ');
+const GATE={music:/muzyk|piosenk|utwor|kawalek|zagraj|odtworz|pusc|graj|pauz|wstrzymaj|nastepn|poprzedn|dalej|stop|play|music/,system:/komputer|uspij|zablokuj|restart|wylacz|zrestartuj|ekran|system/,uninstall_app:/odinstaluj|usun|skasuj/,install_app:/pobierz|zainstaluj|sciagnij|dodaj|zdobadz/,close_app:/zamknij|zamkn|zakoncz|wylacz|zgas/,set_theme:/tryb|motyw|ciemn|jasn|nocn|dzienn/,set_wallpaper:/tapet|tlo|wallpaper/,set_volume:/glosn|cisz|dzwiek|wycisz|volume/,calendar_event:/wydarzen|kalendarz|spotkan|termin|umow/};
+function gateOk(a,text){const g=GATE[a.name];if(!g)return true;const n=miriNorm(text||'');return g.test(n)||(a.name==='music'&&TRACKS.some(t=>n.includes(miriNorm(t.name))))}
+function miriSummary(acts,text){const ok=acts.filter(a=>gateOk(a,text));if(!ok.length)return null;return ok.map(a=>{try{return miriDo(a.name,a.input).msg}catch(e){return 'Nie udało się wykonać polecenia.'}}).join(' ')}
 
 /* dopytywanie: gdy brakuje szczegółu, Miri pyta i traktuje następną wypowiedź jako odpowiedź */
 function ask(type,q,extra){MiriS.pending=Object.assign({type,t:Date.now(),tries:0},extra||{});return q}
 function pendingHandle(p,text,n,raw){
   switch(p.type){
     case 'open_app':case 'close_app':{
-      const r=miriDo(p.type,{app:text}); if(!r.ok&&/Nie znam/.test(r.msg)&&p.tries<1)return ask(p.type,'Nie znam takiej aplikacji. Mam m.in.: '+appListText()+'. Którą mam '+(p.type==='open_app'?'otworzyć':'zamknąć')+'?',{tries:p.tries+1});
+      const r=miriDo(p.type,{app:text}); if(!r.ok&&/Nie znam/.test(r.msg)&&p.tries<1)return ask(p.type,'Nie znam takiej aplikacji. Którą mam '+(p.type==='open_app'?'otworzyć':'zamknąć')+'?',{tries:p.tries+1});
       return r.msg;
     }
     case 'note':return miriDo('create_note',{text}).msg;
@@ -2884,10 +2892,10 @@ function miriLocal(text){
   if(cl!==null)return cl?miriDo('close_app',{app:cl}).msg:ask('close_app','Którą aplikację mam zamknąć?');
   if(/^(?:otworz|uruchom|wlacz|pokaz|przejdz do|idz do|odpal|wejdz do|chce otworzyc)\b/.test(n)||/^(?:aplikacje|program)$/.test(n)){
     const rest=n.replace(/^(?:otworz|uruchom|wlacz|pokaz|przejdz do|idz do|odpal|wejdz do|chce otworzyc)\s*/,'').replace(/^(?:aplikacje|aplikacja|apke|apka|program|okno|mi)\b\s*/,'').trim();
-    if(!rest)return ask('open_app','Którą aplikację mam otworzyć? Mam m.in.: '+appListText()+'.');
+    if(!rest)return ask('open_app','Którą aplikację mam otworzyć?');
     const id=resolveApp(rest);
     if(id)return miriDo('open_app',{app:rest}).msg;
-    if(/^(?:otworz|uruchom|odpal|przejdz do|idz do)/.test(n))return 'Nie znam aplikacji „'+rest.slice(0,40)+'”. Mam m.in.: '+appListText()+'.';
+    if(/^(?:otworz|uruchom|odpal|przejdz do|idz do)/.test(n))return 'Nie znam aplikacji „'+rest.slice(0,40)+'”.';
   }
   if(raw.split(' ').length<=3){const id=appFromText(raw);if(id&&APPS[id]&&raw.length<=24)return miriDo('open_app',{app:raw}).msg}
 
@@ -2917,7 +2925,7 @@ async function miriHandle(text,opts={}){
   let reply=null; try{reply=miriLocal(text)}catch(e){console.error(e);reply=null}
   if(reply==null){
     const r=await miriAI(chat);
-    reply=r.actions.length?miriSummary(r.actions):(r.text||'Nie mam nic do dodania.');
+    reply=r.actions.length?(miriSummary(r.actions,text)||r.text||'Nie jestem pewna, o co prosisz. Powtórz, proszę.'):(r.text||'Nie mam nic do dodania.');
   }
   pushMsg(chat,'assistant',reply); MiriS.reply=reply; setState('idle'); miriUI();
   const fin=()=>{setState('idle');sfx('miriend');miriScheduleClose();if(MiriS.pending&&opts.voice)miriListen();else miriStartWake()};
@@ -2939,8 +2947,6 @@ function miriSettingsUI(host){
   const ta=el('textarea'); ta.value=S.miri.custom; ta.placeholder='np. zwracaj się do mnie Maks i odpowiadaj krótko'; ta.maxLength=500; ta.setAttribute('aria-label','Własne wskazówki');
   ta.style.cssText='width:100%;min-height:58px;border:0;border-radius:8px;background:var(--field);color:var(--fg);padding:8px 10px;font:inherit;resize:vertical;user-select:text'; ta.onchange=()=>{S.miri.custom=ta.value.trim();saveS()};
   const tr=el('div','row'); tr.style.display='block'; tr.innerHTML='<span>Własne wskazówki dla Miri</span>'; tr.append(ta); card.append(tr);
-  const ep=el('input','field'); ep.value=S.miri.endpoint; ep.style.width='170px'; ep.setAttribute('aria-label','Adres API Miri'); ep.onchange=()=>{S.miri.endpoint=ep.value.trim()||'/api/miri';saveS()};
-  card.append(row('Adres API',ep,'Domyślnie /api/miri (funkcja Vercel z kluczem ANTHROPIC_API_KEY)'));
   const clr=el('button','btn','Usuń rozmowy'); clr.onclick=()=>{Chats=[];MiriS.chat=null;saveChats();emit('mirichat')}; card.append(row('Historia rozmów',clr));
   host.append(card);
 }
