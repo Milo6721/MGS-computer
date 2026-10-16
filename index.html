@@ -1608,7 +1608,8 @@ function renderBrowser(body,w,opts){
   function nav(t,text,push=true){
     text=(text||'').trim(); if(!t)return; let u=null, q=null;
     if(text){
-      if(/^https?:\/\//i.test(text))u=text; else if(/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(text))u='https://'+text; else{q=text;u='https://duckduckgo.com/?q='+encodeURIComponent(text)}
+      const dd=/^https:\/\/duckduckgo\.com\/\?q=(.+)$/.exec(text);
+      if(dd){q=decodeURIComponent(dd[1]);u=text}else if(/^https?:\/\//i.test(text))u=text; else if(/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(text))u='https://'+text; else{q=text;u='https://duckduckgo.com/?q='+encodeURIComponent(text)}
     }
     if(push){t.hist=t.hist.slice(0,t.hi+1);t.hist.push({u,q});t.hi=t.hist.length-1}
     if(!u)start(t);else page(t,u,q);
@@ -2031,7 +2032,7 @@ function renderMusic(body,w){
 }
 
 /* ================= NOTATKI ================= */
-function renderNotes(body){
+function renderNotes(body,w){
   let notes=store.get('notes',null)||[
     {id:1,t:'Witaj w MGS Computer\n\nPrzeciągaj okna za pasek tytułu i zmieniaj ich rozmiar w prawym dolnym rogu.\nŻółty przycisk chowa okno do docka, zielony powiększa je.\nCtrl + Spacja otwiera Spotlight, F3 Mission Control, F4 Launchpad.\n\nTe notatki zapisują się w Twojej przeglądarce.'},
     {id:2,t:'Lista zakupów\n\nKawa\nMleko owsiane\nChleb na zakwasie\nCytryny'},
@@ -2045,6 +2046,7 @@ function renderNotes(body){
     notes.forEach(x=>{const d=el('div','nl'+(x.id===cur?' on':''),'<b></b><span></span>');lab(d,x);d.onclick=()=>{cur=x.id;draw()};d.oncontextmenu=e=>{e.preventDefault();popMenu([['Usuń notatkę',()=>{notes=notes.filter(y=>y!==x);if(!notes.length)notes=[{id:Date.now(),t:''}];cur=notes[0].id;save();draw()}]],e.clientX,e.clientY)};list.append(d)});
     ed.value=(notes.find(x=>x.id===cur)||{t:''}).t;
   }
+  w&&w.on('notes',()=>{notes=store.get('notes',notes);cur=notes[0]?notes[0].id:cur;draw()});
   ed.oninput=()=>{const x=notes.find(x=>x.id===cur);if(x){x.t=ed.value;save();const on_=$('.nl.on',list);if(on_)lab(on_,x)}};
   draw();
 }
@@ -2064,6 +2066,7 @@ function renderReminders(body,w){
     if(!items.length)box.append(el('div','empty','Brak przypomnień'));
     items.forEach(i=>{const r=el('div','rem'+(i.done?' done':''),'<i></i><span style="flex:1"></span><button class="tbtn" aria-label="Usuń">×</button>');$('span',r).textContent=i.text;$('i',r).style.borderColor=i.done?'':l.color;if(i.done)$('i',r).style.background=l.color;$('i',r).onclick=()=>{i.done=!i.done;sfx('click');save();draw()};$('button',r).onclick=()=>{D.items=D.items.filter(x=>x!==i);save();draw()};box.append(r)});
   }
+  w.on('rem',()=>{D=store.get('rem',D);draw()});
   add.onkeydown=e=>{if(e.key==='Enter'&&add.value.trim()){D.items.push({id:Date.now(),list:cur,text:add.value.trim(),done:false});add.value='';save();draw()}};
   draw();
 }
@@ -2122,7 +2125,7 @@ function renderActivity(body,w){
 }
 
 /* ================= KALENDARZ ================= */
-function renderCalendar(body){
+function renderCalendar(body,w){
   const ev=store.get('cal',{}); let d=new Date(); d.setDate(1); let selD=new Date();
   const key=x=>x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate());
   const m=el('div','cal-m'), sd=el('div','cal-s'); const wrap=el('div','cal'); wrap.append(m,sd); body.append(wrap);
@@ -2144,6 +2147,7 @@ function renderCalendar(body){
     if(!(ev[k]||[]).length)l.append(el('div','',"<span style='color:var(--fg2)'>Brak wydarzeń</span>"));
     $('button',sd).onclick=()=>dialog({title:'Nowe wydarzenie',msg:selD.toLocaleDateString('pl-PL',{day:'numeric',month:'long'}),input:'Nazwa wydarzenia',buttons:[{label:'Anuluj',cancel:true},{label:'Dodaj',primary:true,cb:v=>{v=(v||'').trim();if(!v)return false;(ev[k]=ev[k]||[]).push(v);store.set('cal',ev);draw()}}]});
   }
+  w&&w.on('cal',()=>{Object.assign(ev,store.get('cal',{}));draw()});
   draw();
 }
 
@@ -2252,6 +2256,13 @@ const STORE=[
   {id:'sketch',name:'Szkicownik',cat:'Kreatywność',dev:'MGS Studio',rating:4.6,size:'1,8 MB',brew:'szkicownik',desc:'Rysuj pędzlem w wielu kolorach, wymazuj i zapisuj prace. Gotowe rysunki trafiają do folderu Zdjęcia i pojawiają się w aplikacji Zdjęcia.',shot:['#fffdf4','#e8dfae']},
   {id:'pomodoro',name:'Pomodoro',cat:'Produktywność',dev:'MGS Studio',rating:4.4,size:'0,5 MB',brew:'pomodoro',desc:'Technika Pomodoro: 25 minut pracy, 5 minut przerwy. Aplikacja liczy cykle i wysyła powiadomienie, gdy czas minie.',shot:['#ff7a59','#e03c2a']}
 ];
+/* pobieranie z paskiem postępu w docku (używa tego App Store i Miri) */
+function downloadApp(id){
+  if(dl[id]!=null||S.installed.includes(id)||!APPS[id])return false;
+  dl[id]=0; sfx('click'); refreshDock(); emit('storeprog');
+  const iv=setInterval(()=>{dl[id]+=.035+Math.random()*.05;if(dl[id]>=1){clearInterval(iv);delete dl[id];installApp(id)}else dockProgress(id,dl[id]);emit('storeprog')},150);
+  return true;
+}
 function installApp(id){
   if(S.installed.includes(id))return;
   S.installed.push(id); saveS(); VFS.syncApps(); refreshDock(); emit('store');
@@ -2272,8 +2283,7 @@ function renderAppStore(body,w){
     if(dl[s.id]!=null){b.className='get ghost';b.innerHTML=ring(dl[s.id]);b.disabled=true}
     else if(inst){b.className='get ghost';b.textContent='Otwórz';b.onclick=e=>{e.stopPropagation();openApp(s.id)}}
     else{b.textContent='Pobierz';b.onclick=e=>{
-      e.stopPropagation(); dl[s.id]=0; draw(); sfx('click'); refreshDock();
-      const iv=setInterval(()=>{dl[s.id]+=.035+Math.random()*.05;if(dl[s.id]>=1){clearInterval(iv);delete dl[s.id];installApp(s.id);if(wins.has(w.wid))draw();return}dockProgress(s.id,dl[s.id]);if(wins.has(w.wid))draw()},150);
+      e.stopPropagation(); downloadApp(s.id); draw();
     }}
     return b;
   }
@@ -2306,7 +2316,7 @@ function renderAppStore(body,w){
     if(!list.length)box.append(el('div','empty','Nic tu jeszcze nie ma. Pobierz coś z zakładki Odkrywaj.'));
     list.forEach(s=>box.append(appRow(s)));
   }
-  w.on('store',draw); draw();
+  w.on('store',draw); w.on('storeprog',draw); draw();
 }
 
 /* ---------- Saper ---------- */
@@ -2464,7 +2474,7 @@ Object.assign(APPS,{
 
 
 /* ================= MIRI AI: asystentka głosowa i tekstowa ================= */
-const MiriS={open:false,state:'idle',level:0,transcript:'',reply:'',chat:null,wakeRec:null,capRec:null,capturing:false,autoClose:false,closeT:null};
+const MiriS={pending:null,open:false,state:'idle',level:0,transcript:'',reply:'',chat:null,wakeRec:null,capRec:null,capturing:false,autoClose:false,closeT:null};
 const SRC=window.SpeechRecognition||window.webkitSpeechRecognition;
 const miriNorm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');
 const NO_AI='Nie mogę teraz połączyć się z AI. Ta funkcja działa po wdrożeniu strony na Vercel z kluczem ANTHROPIC_API_KEY. Polecenia lokalne, jak otwieranie aplikacji, godzina czy muzyka, działają bez tego.';
@@ -2569,7 +2579,7 @@ function miriClose(){
   if(MiriS.state!=='idle')MiriS.state='idle'; MiriS.reply=''; MiriS.transcript='';
   p.classList.add('out'); setTimeout(()=>p.remove(),230); miriStartWake();
 }
-function miriScheduleClose(){clearTimeout(MiriS.closeT);if(MiriS.open&&MiriS.autoClose)MiriS.closeT=setTimeout(()=>{const i=$('#miri input');if(MiriS.state==='idle'&&!(i&&i===document.activeElement&&i.value))miriClose()},7000)}
+function miriScheduleClose(){clearTimeout(MiriS.closeT);if(MiriS.open&&MiriS.autoClose&&!MiriS.pending)MiriS.closeT=setTimeout(()=>{const i=$('#miri input');if(MiriS.state==='idle'&&!(i&&i===document.activeElement&&i.value))miriClose()},7000)}
 function miriMenu(x,y){
   popMenu([['Zapytaj Miri',()=>miriOpen({focus:true})],['Słuchaj teraz',()=>{miriOpen();miriListen()}],'-',['Hey Miri',()=>miriSetWake(!S.miri.wake),'',{chk:S.miri.wake}],['Mów odpowiedzi',()=>{S.miri.speak=!S.miri.speak;saveS();emit('miricfg')},'',{chk:S.miri.speak}],'-',['Otwórz aplikację Miri AI',()=>openApp('miri')],['Nowa rozmowa',()=>{miriNewChat();openApp('miri')}],['Ustawienia Miri…',()=>openApp('settings',{pane:'miri'})]],x,y);
 }
@@ -2622,98 +2632,296 @@ function miriSpeak(text,done){
   }catch(e){done&&done()}
 }
 
-/* ---------- obsługa pytania: najpierw umiejętności lokalne, potem AI z serwera ---------- */
-async function miriHandle(text,opts={}){
-  text=(text||'').trim(); if(!text)return;
-  const chat=opts.chatId?(Chats.find(c=>c.id===opts.chatId)||miriChat(false)):miriChat(!!opts.panel);
-  MiriS.chat=chat.id; MiriS.transcript=text; MiriS.reply=''; clearTimeout(MiriS.closeT);
-  pushMsg(chat,'user',text); setState('thinking');
-  let reply=null; try{reply=miriLocal(text)}catch(e){reply=null}
-  if(reply==null)reply=await miriAI(chat);
-  pushMsg(chat,'assistant',reply); MiriS.reply=reply; setState('idle'); MiriS.state='idle'; miriUI();
-  const fin=()=>{setState('idle');sfx('miriend');miriScheduleClose();miriStartWake()};
-  if(S.miri.speak&&window.speechSynthesis){setState('speaking');miriSpeak(reply,fin)}else fin();
+/* ---------- obsługa pytania: umiejętności lokalne (z dopytywaniem), potem AI z narzędziami ---------- */
+const okR=m=>({ok:true,msg:m}), failR=m=>({ok:false,msg:m});
+const JOKES=['Dlaczego programista nie lubi natury? Bo ma za dużo bugów.','Co mówi jedno ciastko do drugiego? Nic, ciastka nie mówią, ale pliki cookie owszem.','Jak nazywa się komputer, który śpiewa? Dell.','Wiesz, dlaczego komputer się przeziębił? Bo zostawił otwarte okna.','Dlaczego kalendarz jest taki popularny? Bo ma mnóstwo randek.','Co robi informatyk w ogrodzie? Sadzi drzewa binarne.'];
+const NUMW={jeden:1,jedna:1,jedno:1,dwa:2,dwie:2,trzy:3,cztery:4,piec:5,szesc:6,siedem:7,osiem:8,dziewiec:9,dziesiec:10,pietnascie:15,dwadziescia:20,trzydziesci:30,czterdziesci:40,piecdziesiat:50,szescdziesiat:60};
+const plural=(n,f)=>n===1?f[0]:(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14))?f[1]:f[2];
+function durText(s){
+  const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60, p=[];
+  if(h)p.push(h+' '+plural(h,['godzinę','godziny','godzin'])); if(m)p.push(m+' '+plural(m,['minutę','minuty','minut'])); if(x)p.push(x+' '+plural(x,['sekundę','sekundy','sekund']));
+  return p.join(' i ')||'0 sekund';
+}
+function parseDuration(raw){
+  let s=raw.replace(/\b(jeden|jedna|jedno|dwa|dwie|trzy|cztery|piec|szesc|siedem|osiem|dziewiec|dziesiec|pietnascie|dwadziescia|trzydziesci|czterdziesci|piecdziesiat|szescdziesiat)\b/g,w=>NUMW[w]);
+  if(/\bpol\s+godzin/.test(s))return 1800; if(/\bkwadrans/.test(s))return 900;
+  const m=s.match(/(\d+(?:[.,]\d+)?)\s*(sekund\w*|sek\w*|minut\w*|min\b|godzin\w*|godz\w*)/);
+  if(m){const v=parseFloat(m[1].replace(',','.')),u=m[2][0]==='s'?1:m[2][0]==='g'?3600:60;return Math.round(v*u)}
+  const m2=s.match(/\b(?:na|za)\s+(minute|godzine|sekunde)\b/); if(m2)return m2[1][0]==='m'?60:m2[1][0]==='g'?3600:1;
+  return 0;
+}
+const KEYAPP={finder:['finder','pliki','folder','eksplorator'],browser:['przegladark','internet','browser'],unnovation:['unnovation','innovation','portal'],photos:['zdjec','fotk','galeri','photos'],music:['muzyk','odtwarzacz','music'],notes:['notatk','notes'],reminders:['przypomnien','reminders'],calendar:['kalendarz','calendar'],appstore:['app store','appstore','sklep'],terminal:['terminal','konsol'],settings:['ustawien','settings'],calc:['kalkulator','calculator'],clock:['zegar','stoper','clock'],textedit:['edytor','textedit'],activity:['monitor'],miri:['miri ai'],launchpad:['launchpad'],workdocs:['work docs','workdocs','work doc'],mathdocs:['math docs','mathdocs','math doc'],wykresy:['wykres','charts'],paybud:['pay buddy','paybuddy','pay bud','paybud'],minesweeper:['saper','minesweeper'],g2048:['2048'],snake:['waz','snake'],sketch:['szkicownik','sketch'],pomodoro:['pomodoro']};
+function lev(a,b){const d=Array.from({length:a.length+1},(_,i)=>[i,...Array(b.length).fill(0)]);for(let j=1;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
+function appFromText(n){
+  let best=null,len=0;
+  for(const[id,keys]of Object.entries(KEYAPP))for(const k of keys)if(n.includes(k)&&k.length>len){best=id;len=k.length}
+  if(best)return best;
+  const words=n.split(' ');
+  for(const[id,keys]of Object.entries(KEYAPP))for(const k of keys){if(k.includes(' ')||k.length<5)continue;for(const w of words)if(w.length>=5&&lev(w.slice(0,k.length),k)<=1)return id}
+  return null;
+}
+function resolveApp(q){
+  q=miriNorm(String(q||'')).replace(/[?!.,]/g,' ').replace(/\s+/g,' ').trim(); if(!q)return null;
+  if(APPS[q])return q;
+  for(const id of Object.keys(APPS))if(miriNorm(APPS[id].name)===q)return id;
+  return appFromText(q);
+}
+const appAvail=id=>BASE_APPS.includes(id)||S.installed.includes(id);
+const appListText=()=>[...BASE_APPS,...S.installed].filter(i=>APPS[i]&&!APPS[i].special).slice(0,8).map(i=>APPS[i].name).join(', ');
+
+/* Wspólny wykonawca: to samo wywołują umiejętności lokalne i narzędzia AI. Zwraca prawdziwy wynik. */
+function miriDo(name,inp){
+  inp=inp||{};
+  switch(name){
+    case 'open_app':{
+      const id=resolveApp(inp.app); if(!id||!APPS[id])return failR('Nie znam aplikacji „'+String(inp.app||'').slice(0,40)+'”.');
+      if(!appAvail(id)){openApp('appstore');return failR('Aplikacja '+APPS[id].name+' nie jest jeszcze pobrana. Otwieram App Store, tam ją pobierzesz.')}
+      openApp(id); return okR('Otwieram '+APPS[id].name+'.');
+    }
+    case 'close_app':{
+      if(miriNorm(String(inp.app||'')).trim()==='all'||/wszystk/.test(miriNorm(String(inp.app||'')))){if(!wins.size)return failR('Nie ma otwartych okien.');closeAll();return okR('Zamykam wszystkie okna.')}
+      const id=resolveApp(inp.app); if(!id)return failR('Nie znam aplikacji „'+String(inp.app||'').slice(0,40)+'”.');
+      if(!winsOf(id).length)return failR(APPS[id].name+' nie jest otwarte.');
+      winsOf(id).forEach(closeWin); return okR('Zamykam '+APPS[id].name+'.');
+    }
+    case 'create_note':{
+      const t=String(inp.text||'').trim(); if(!t)return failR('Nie usłyszałam treści notatki.');
+      const notes=store.get('notes',[]); notes.unshift({id:Date.now(),t}); store.set('notes',notes); emit('notes');
+      return okR('Zapisałam notatkę: '+t.slice(0,80)+'.');
+    }
+    case 'add_reminder':{
+      const t=String(inp.text||'').trim(); if(!t)return failR('Nie usłyszałam treści przypomnienia.');
+      const D=store.get('rem',null)||{lists:[{id:'a',name:'Przypomnienia',color:'#0a84ff'},{id:'b',name:'Zakupy',color:'#ff9f0a'},{id:'c',name:'Praca',color:'#30d158'}],items:[]};
+      D.items.push({id:Date.now(),list:D.lists[0].id,text:t,done:false}); store.set('rem',D); emit('rem');
+      return okR('Dodałam przypomnienie: '+t.slice(0,80)+'.');
+    }
+    case 'set_timer':{
+      const s=Math.round(+inp.seconds); if(!s||s<1||s>86400)return failR('Podaj czas minutnika od 1 sekundy do 24 godzin.');
+      const lab=String(inp.label||'').slice(0,60);
+      setTimeout(()=>{sfx('notify');notify('Minutnik',lab?lab+': czas minął.':'Czas minął ('+durText(s)+').','clock');miriSpeak(lab?'Czas minął: '+lab+'.':'Czas minął.')},s*1000);
+      return okR('Minutnik ustawiony na '+durText(s)+(lab?' ('+lab+')':'')+'.');
+    }
+    case 'music':{
+      const a=inp.action||'play';
+      if(a==='pause'){if(Music.playing){musicToggle();return okR('Zatrzymałam muzykę.')}return failR('Muzyka teraz nie gra.')}
+      if(a==='next'){musicNext();return okR('Następny utwór: '+TRACKS[Music.cur].name+'.')}
+      if(a==='previous'){musicPrev();return okR('Poprzedni utwór: '+TRACKS[Music.cur].name+'.')}
+      const q=miriNorm(String(inp.query||'')).trim();
+      if(q.length>=2){
+        const i=TRACKS.findIndex(t=>(!t.file||t.ok!==false)&&miriNorm(t.name).includes(q));
+        if(i<0)return failR('Nie mam utworu „'+String(inp.query).slice(0,40)+'”. Mam m.in.: '+TRACKS.filter(t=>!t.file||t.ok!==false).slice(0,4).map(t=>t.name).join(', ')+'.');
+        musicPlay(i); return okR('Gram: '+TRACKS[i].name+'.');
+      }
+      if(Music.cur==null)musicPlay(Math.random()*GEN.length|0);else if(!Music.playing)musicToggle();
+      return okR('Gram: '+TRACKS[Music.cur].name+'.');
+    }
+    case 'set_theme':{inp.mode==='light'?setTheme('light'):setTheme('dark');return okR(inp.mode==='light'?'Włączam tryb jasny.':'Włączam tryb ciemny.')}
+    case 'set_wallpaper':{
+      const list=WALLS.filter(x=>x.id!=='custom');
+      const q=miriNorm(String(inp.name||'')).trim(); let w=q.length>2?list.find(x=>miriNorm(x.name).includes(q)||q.includes(miriNorm(x.name))):null;
+      if(!w&&(inp.next||!q)){const i=list.findIndex(x=>x.id===S.wall);w=list[(i+1)%list.length]}
+      if(!w)return failR('Nie mam tapety „'+String(inp.name).slice(0,30)+'”. Dostępne m.in.: Zorza, Ocean, Neon, Lawa, Sakura.');
+      S.wall=w.id; saveS(); applyWall(); return okR('Ustawiam tapetę „'+w.name+'”.');
+    }
+    case 'set_volume':{
+      const v=Math.max(0,Math.min(100,Math.round(+inp.level))); if(isNaN(v))return failR('Podaj głośność od 0 do 100.');
+      S.volume=v; saveS(); applySettings(); return okR('Głośność ustawiona na '+v+' procent.');
+    }
+    case 'open_url':{
+      let u=String(inp.url||'').trim(); if(!/^[\w.-]+\.[a-z]{2,}/i.test(u)&&!/^https?:\/\//i.test(u))return failR('To nie wygląda na adres strony.');
+      if(!/^https?:\/\//i.test(u))u='https://'+u;
+      openApp('browser',{url:u}); return okR('Otwieram '+u.replace(/^https?:\/\//,'').slice(0,60)+' w przeglądarce.');
+    }
+    case 'web_search':{
+      const q=String(inp.query||'').trim(); if(!q)return failR('Nie usłyszałam, czego szukać.');
+      openApp('browser',{url:'https://duckduckgo.com/?q='+encodeURIComponent(q)}); return okR('Wyszukuję „'+q.slice(0,60)+'” w przeglądarce.');
+    }
+    case 'install_app':{
+      const id=resolveApp(inp.app); const st=id&&STORE.find(s=>s.id===id);
+      if(!st)return failR('Nie mam takiej aplikacji w App Store. Są: '+STORE.slice(0,5).map(s=>s.name).join(', ')+'.');
+      if(S.installed.includes(id))return failR(st.name+' jest już pobrana.');
+      if(dl[id]!=null)return failR(st.name+' już się pobiera.');
+      downloadApp(id); return okR('Pobieram '+st.name+'. Postęp widać w docku.');
+    }
+    case 'uninstall_app':{
+      const id=resolveApp(inp.app); if(!id||!S.installed.includes(id))return failR('Taka aplikacja nie jest pobrana.');
+      const nm=APPS[id].name; uninstallApp(id); return okR('Odinstalowałam '+nm+'.');
+    }
+    case 'system':{
+      const a=inp.action;
+      if(a==='shutdown'){confirmPower('shutdown');return okR('Potwierdź wyłączenie w oknie dialogowym.')}
+      if(a==='restart'){confirmPower('restart');return okR('Potwierdź restart w oknie dialogowym.')}
+      if(a==='sleep'){setTimeout(sleepNow,1400);return okR('Usypiam komputer.')}
+      if(a==='lock'){setTimeout(login,1200);return okR('Blokuję ekran.')}
+      if(a==='fullscreen'){toggleFullscreen();return okR('Przełączam pełny ekran.')}
+      return failR('Nie znam takiej akcji systemowej.');
+    }
+    case 'calendar_event':{
+      const d=String(inp.date||''), t=String(inp.title||'').trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!t)return failR('Podaj datę i nazwę wydarzenia.');
+      const ev=store.get('cal',{}); (ev[d]=ev[d]||[]).push(t); store.set('cal',ev); emit('cal');
+      return okR('Dodałam wydarzenie „'+t.slice(0,50)+'” na '+new Date(d+'T12:00:00').toLocaleDateString('pl-PL',{day:'numeric',month:'long'})+'.');
+    }
+    case 'create_folder':{
+      const nm=String(inp.name||'').trim().replace(/[\/\\]/g,'-'); if(!nm)return failR('Nie usłyszałam nazwy folderu.');
+      try{VFS.mkdir(HOME+'/Desktop/'+nm)}catch(e){return failR('Nie mogę utworzyć folderu: '+e.message+'.')}
+      return okR('Utworzyłam folder „'+nm+'” na pulpicie.');
+    }
+  }
+  return failR('Nie znam polecenia „'+name+'”.');
+}
+const miriSummary=acts=>acts.map(a=>{try{return miriDo(a.name,a.input).msg}catch(e){return 'Nie udało się wykonać polecenia.'}}).join(' ');
+
+/* dopytywanie: gdy brakuje szczegółu, Miri pyta i traktuje następną wypowiedź jako odpowiedź */
+function ask(type,q,extra){MiriS.pending=Object.assign({type,t:Date.now(),tries:0},extra||{});return q}
+function pendingHandle(p,text,n,raw){
+  switch(p.type){
+    case 'open_app':case 'close_app':{
+      const r=miriDo(p.type,{app:text}); if(!r.ok&&/Nie znam/.test(r.msg)&&p.tries<1)return ask(p.type,'Nie znam takiej aplikacji. Mam m.in.: '+appListText()+'. Którą mam '+(p.type==='open_app'?'otworzyć':'zamknąć')+'?',{tries:p.tries+1});
+      return r.msg;
+    }
+    case 'note':return miriDo('create_note',{text}).msg;
+    case 'reminder':return miriDo('add_reminder',{text}).msg;
+    case 'timer':{const s=parseDuration(raw)||(/^\d+$/.test(raw.trim())?+raw.trim()*60:0);if(!s&&p.tries<1)return ask('timer','Nie zrozumiałam czasu. Powiedz np. pięć minut.',{tries:1});return miriDo('set_timer',{seconds:s,label:p.label}).msg}
+    case 'folder':return miriDo('create_folder',{name:text}).msg;
+    case 'search':return miriDo('web_search',{query:text}).msg;
+    case 'install':return miriDo('install_app',{app:text}).msg;
+    case 'play':return miriDo('music',{action:'play',query:text}).msg;
+  }
+  return null;
+}
+const cutAfter=(raw,text,re)=>{const m=re.exec(raw);return m?text.slice(m.index+m[0].length).trim().replace(/^[:,\s]+/,''):null};
+
+function miriLocal(text){
+  const raw=miriNorm(text).replace(/[?!.,;]/g,' ').replace(/\s+/g,' ').trim();
+  const n=(' '+raw+' ').replace(/\b(prosze|mi|mozesz|moglabys|czy|chcialbym|chcialabym|chce|jeszcze|teraz|tak)\b/g,' ').replace(/\s+/g,' ').trim();
+  const has=(...a)=>a.some(x=>n.includes(x)), d=new Date();
+  /* odpowiedź na pytanie Miri */
+  if(MiriS.pending&&Date.now()-MiriS.pending.t<60000){
+    const p=MiriS.pending; MiriS.pending=null;
+    if(/^(anuluj|nie|nic|zapomnij|nie trzeba|stop|dziekuje|dzieki)\b/.test(raw))return 'Dobrze, anuluję.';
+    const r=pendingHandle(p,text.trim(),n,raw); if(r!=null)return r;
+  }else MiriS.pending=null;
+  if(!raw)return ask('open_app','Słucham, o co chodzi?');
+
+  /* rozmowa */
+  if(/^(czesc|hej|hejka|witaj|dzien dobry|dobry wieczor|siema|halo|elo)( miri)?$/.test(raw))return 'Cześć '+S.user+'! W czym mogę pomóc?';
+  if(/^(dzieki|dziekuje|dziekuje bardzo|super|swietnie|ok|okej|dobrze)$/.test(raw))return 'Proszę bardzo!';
+  if(/^(pa|do widzenia|zamknij sie|wylacz sie|koniec)( miri)?$/.test(raw)){setTimeout(miriClose,2200);return 'Do usłyszenia!'}
+  if(has('kim jestes','jak sie nazywasz','co potrafisz','co umiesz','pomoc','w czym mozesz pomoc'))return 'Jestem Miri. Otwieram i zamykam aplikacje, zapisuję notatki i przypomnienia, ustawiam minutniki, włączam muzykę, zmieniam tapety, motyw i głośność, pobieram aplikacje z App Store, szukam w internecie i odpowiadam na pytania, gdy działa połączenie z AI. Powiedz na przykład: otwórz zdjęcia.';
+  if(has('ktora godzina','jaka godzina','ktora jest','jaki jest czas'))return 'Jest '+pad(d.getHours())+':'+pad(d.getMinutes())+'.';
+  if(has('jaka data','jaki dzis dzien','jaki mamy dzien','ktorego dzis','jaki jest dzisiaj dzien','jaki dzis jest dzien'))return 'Dzisiaj jest '+d.toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
+  if(has('zart','kawal'))return JOKES[Math.random()*JOKES.length|0];
+  if(has('rzuc moneta','orzel czy reszka'))return Math.random()<.5?'Orzeł.':'Reszka.';
+  if(has('rzuc kostka'))return 'Wypadło '+(1+(Math.random()*6|0))+'.';
+
+  /* system */
+  if(has('ciemny tryb','tryb ciemny','ciemny motyw','tryb nocny','wlacz ciemny'))return miriDo('set_theme',{mode:'dark'}).msg;
+  if(has('jasny tryb','tryb jasny','jasny motyw','tryb dzienny','wlacz jasny'))return miriDo('set_theme',{mode:'light'}).msg;
+  if(has('pelny ekran'))return miriDo('system',{action:'fullscreen'}).msg;
+  if(has('wylacz komputer','zamknij komputer','wylacz system'))return miriDo('system',{action:'shutdown'}).msg;
+  if(has('zrestartuj','uruchom ponownie','restart komputera','restart systemu'))return miriDo('system',{action:'restart'}).msg;
+  if(/\buspij\b/.test(n))return miriDo('system',{action:'sleep'}).msg;
+  if(has('zablokuj ekran','zablokuj komputer'))return miriDo('system',{action:'lock'}).msg;
+  if(has('mission control','wszystkie okna','pokaz okna')){setTimeout(toggleMC,300);return 'Pokazuję wszystkie okna.'}
+  const vm=n.match(/glosnosc\w*\D{0,12}(\d{1,3})/); if(vm)return miriDo('set_volume',{level:+vm[1]}).msg;
+  if(has('ciszej','scisz')){S.volume=Math.max(0,S.volume-20);saveS();applySettings();return 'Ściszam do '+S.volume+' procent.'}
+  if(has('glosniej','zglosn')){S.volume=Math.min(100,S.volume+20);saveS();applySettings();return 'Zgłaśniam do '+S.volume+' procent.'}
+  if(/^wycisz/.test(n))return miriDo('set_volume',{level:0}).msg;
+  if(has('tapet')){
+    const list=WALLS.filter(x=>x.id!=='custom'), w=list.find(x=>miriNorm(x.name).length>2&&n.includes(miriNorm(x.name)));
+    if(w)return miriDo('set_wallpaper',{name:w.name}).msg;
+    return miriDo('set_wallpaper',{next:true}).msg;
+  }
+
+  /* muzyka */
+  if(has('nastepny utwor','nastepna piosenk','nastepny kawalek')||n==='dalej'||n==='nastepny')return miriDo('music',{action:'next'}).msg;
+  if(has('poprzedni utwor','poprzednia piosenk')||n==='poprzedni')return miriDo('music',{action:'previous'}).msg;
+  if(has('pauza','zatrzymaj muzyk','wylacz muzyk','stop muzyk','zatrzymaj piosenk','wstrzymaj'))return miriDo('music',{action:'pause'}).msg;
+  if(has('co gra','jaki utwor gra','co teraz gra'))return Music.cur!=null&&Music.playing?'Gra: '+TRACKS[Music.cur].name+'.':'Teraz nic nie gra.';
+  const pm=n.match(/^(?:zagraj|odtworz|pusc|wlacz|odpal)\s+(?:utwor\s+|piosenke\s+|muzyke\s+)?(.*)$/);
+  if(pm){
+    const q=pm[1].trim();
+    if(!q||/^(muzyke|piosenke|cos|jakas muzyke|jakis utwor|jakas piosenke|muzyka|utwor|piosenka)$/.test(q))return miriDo('music',{action:'play'}).msg;
+    if(q.length>=2&&TRACKS.some(t=>miriNorm(t.name).includes(q)))return miriDo('music',{action:'play',query:q}).msg;
+  }
+  if(/^(muzyka|muzyke)$/.test(n))return miriDo('music',{action:'play'}).msg;
+
+  /* minutnik, przypomnienia, notatki, wydarzenia */
+  if(has('minutnik','odlicz','timer','stoper')&&!has('otworz zegar')){
+    const s=parseDuration(raw); if(s)return miriDo('set_timer',{seconds:s}).msg;
+    return ask('timer','Na ile mam ustawić minutnik?');
+  }
+  const pr=cutAfter(raw,text,/\bprzypomnij(?:\s+mi)?\s+(?:o\s+)?|\bdodaj przypomnienie\s*(?:o\s+|ze\s+|:\s*)?|\bnowe przypomnienie\s*(?:o\s+|:\s*)?/);
+  if(pr!==null){
+    const s=/\bza\s+\S+\s+\S+/.test(raw)?parseDuration(raw):0;
+    if(s)return miriDo('set_timer',{seconds:s,label:pr.replace(/\bza\s+\S+\s+\S+\s*/i,'').trim()}).msg;
+    return pr?miriDo('add_reminder',{text:pr}).msg:ask('reminder','O czym mam Ci przypomnieć?');
+  }
+  const nt=cutAfter(raw,text,/\b(?:zapisz|zanotuj|notuj)\b\s*(?:notatke\s+)?(?:to\s+|ze\s+|jako\s+|o\s+|:\s*)?/)??cutAfter(raw,text,/\b(?:zrob|dodaj|stworz|utworz|napisz|nowa)\b[a-z ]*?\bnotatk\w*\s*(?:o\s+|ze\s+|z trescia\s+|:\s*)?/);
+  if(nt!==null)return nt?miriDo('create_note',{text:nt}).msg:ask('note','Co mam zapisać?');
+  if(has('przeczytaj notatk','ostatnia notatka','co zapisalem','co zapisalam')){const nn=store.get('notes',[]);return nn.length?'Ostatnia notatka: '+nn[0].t.split('\n')[0]:'Nie masz jeszcze notatek.'}
+  const ce=cutAfter(raw,text,/\bdodaj wydarzenie\s*(?:o\s+|:\s*)?/);
+  if(ce!==null)return ce?miriDo('calendar_event',{date:new Date().toISOString().slice(0,10),title:ce}).msg:'Podaj nazwę wydarzenia, np. dodaj wydarzenie spotkanie.';
+
+  /* pliki */
+  const fo=cutAfter(raw,text,/\b(?:utworz|stworz|zrob|dodaj)\s+(?:nowy\s+)?folder\s*(?:o nazwie\s+|:\s*)?/);
+  if(fo!==null)return fo?miriDo('create_folder',{name:fo}).msg:ask('folder','Jak ma się nazywać folder?');
+  if(has('co jest na pulpicie','co mam na pulpicie')){const l=VFS.list(HOME+'/Desktop').map(x=>x[0]);return l.length?'Na pulpicie masz: '+l.join(', ')+'.':'Pulpit jest pusty.'}
+
+  /* internet */
+  const sq=cutAfter(raw,text,/^(?:wyszukaj|szukaj|znajdz|wygoogluj|sprawdz)\s+(?:w\s+internecie\s+|w\s+sieci\s+|w\s+google\s+)?/);
+  if(sq!==null)return sq?miriDo('web_search',{query:sq}).msg:ask('search','Czego mam szukać?');
+  if(/^pogoda\b|^jaka (?:jest )?pogoda/.test(raw))return 'Nie mam własnych danych o pogodzie, więc '+miriDo('web_search',{query:'pogoda '+(raw.replace(/^(jaka )?(jest )?pogoda\s*/,'')||'')}).msg.toLowerCase();
+  const um=miriNorm(text).trim().match(/(?:otworz|wejdz na|idz na|przejdz na|pokaz)\s+(?:strone\s+)?((?:https?:\/\/)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?)/);
+  if(um)return miriDo('open_url',{url:um[1]}).msg;
+
+  /* aplikacje */
+  const ins=cutAfter(raw,text,/^(?:pobierz|zainstaluj|sciagnij)\s+(?:aplikacje\s+|program\s+)?/);
+  if(ins!==null)return ins?miriDo('install_app',{app:ins}).msg:ask('install','Którą aplikację mam pobrać?');
+  const uni=cutAfter(raw,text,/^(?:odinstaluj|usun aplikacje|usun)\s+(?:aplikacje\s+)?/);
+  if(uni){const id=resolveApp(uni);if(id&&S.installed.includes(id))return miriDo('uninstall_app',{app:uni}).msg}
+  const cl=cutAfter(raw,text,/^zamknij\s+(?:aplikacje\s+|okno\s+|program\s+)?/);
+  if(cl!==null)return cl?miriDo('close_app',{app:cl}).msg:ask('close_app','Którą aplikację mam zamknąć?');
+  if(/^(?:otworz|uruchom|wlacz|pokaz|przejdz do|idz do|odpal|wejdz do|chce otworzyc)\b/.test(n)||/^(?:aplikacje|program)$/.test(n)){
+    const rest=n.replace(/^(?:otworz|uruchom|wlacz|pokaz|przejdz do|idz do|odpal|wejdz do|chce otworzyc)\s*/,'').replace(/^(?:aplikacje|aplikacja|apke|apka|program|okno|mi)\b\s*/,'').trim();
+    if(!rest)return ask('open_app','Którą aplikację mam otworzyć? Mam m.in.: '+appListText()+'.');
+    const id=resolveApp(rest);
+    if(id)return miriDo('open_app',{app:rest}).msg;
+    if(/^(?:otworz|uruchom|odpal|przejdz do|idz do)/.test(n))return 'Nie znam aplikacji „'+rest.slice(0,40)+'”. Mam m.in.: '+appListText()+'.';
+  }
+  if(raw.split(' ').length<=3){const id=appFromText(raw);if(id&&APPS[id]&&raw.length<=24)return miriDo('open_app',{app:raw}).msg}
+
+  /* kalkulator */
+  if(has('policz','ile to','ile jest','oblicz')||(/^[\d\s+\-*/x÷^().,]+$/.test(raw)&&/\d\s*[+\-*/x÷^]\s*\d/.test(raw))){
+    const e=n.replace(/policz|ile to jest|ile to|ile jest|oblicz/g,' ').replace(/ plus /g,'+').replace(/ minus /g,'-').replace(/ razy /g,'*').replace(/ x /g,'*').replace(/ podzielic przez | podzielic na | podziel przez | podziel na /g,'/').replace(/ do kwadratu/g,'**2').replace(/\^/g,'**').replace(/,/g,'.').replace(/\s+/g,'');
+    if(/^[\d+\-*/().]+$/.test(e)&&/\d/.test(e)){try{const v=Function('"use strict";return('+e+')')();if(isFinite(v))return 'To jest '+String(+v.toPrecision(12)).replace('.',',')+'.'}catch(er){}}
+  }
+  return null;
 }
 async function miriAI(chat){
   const msgs=chat.msgs.slice(-16).map(m=>({role:m.r,content:m.t}));
+  const context={now:new Date().toString().slice(0,60),user:S.user,apps:[...BASE_APPS,...S.installed].filter(i=>APPS[i]).map(i=>APPS[i].name),playing:Music.playing&&Music.cur!=null?TRACKS[Music.cur].name:''};
   try{
-    const r=await fetch(S.miri.endpoint||'/api/miri',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:msgs,style:S.miri.style,custom:S.miri.custom})});
+    const r=await fetch(S.miri.endpoint||'/api/miri',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:msgs,style:S.miri.style,custom:S.miri.custom,context})});
     let j={}; try{j=await r.json()}catch(e){}
-    if(r.ok&&j.text)return j.text;
-    if(r.status===404||r.status===405||!j.error)return NO_AI;
-    return 'Miri AI: '+j.error;
-  }catch(e){return NO_AI}
+    if(r.ok&&(j.text||(j.actions&&j.actions.length)))return{text:j.text||'',actions:Array.isArray(j.actions)?j.actions:[]};
+    if(r.status===404||r.status===405||!j.error)return{text:NO_AI,actions:[]};
+    return{text:'Miri AI: '+j.error,actions:[]};
+  }catch(e){return{text:NO_AI,actions:[]}}
 }
-
-const KEYAPP={finder:['finder','pliki','folder'],browser:['przegladark','internet'],unnovation:['unnovation','portal'],photos:['zdjec','fotk','galeri'],music:['muzyk','odtwarzacz'],notes:['notatk'],reminders:['przypomnien'],calendar:['kalendarz'],appstore:['app store','appstore','sklep'],terminal:['terminal','konsol'],settings:['ustawien'],calc:['kalkulator'],clock:['zegar','stoper'],textedit:['edytor'],activity:['monitor'],miri:['miri ai'],workdocs:['work docs','workdocs'],mathdocs:['math docs','mathdocs'],wykresy:['wykres'],paybud:['pay buddy','paybuddy','pay bud'],minesweeper:['saper'],g2048:['2048'],snake:['waz'],sketch:['szkicownik'],pomodoro:['pomodoro']};
-function appFromText(n){let best=null,len=0;for(const[id,keys]of Object.entries(KEYAPP))for(const k of keys)if(n.includes(k)&&k.length>len){best=id;len=k.length}return best}
-function miriLocal(text){
-  const n=miriNorm(text).replace(/[?!.,]/g,' ').replace(/\s+/g,' ').trim(), has=(...a)=>a.some(x=>n.includes(x)), d=new Date();
-  if(/^(czesc|hej|hejka|witaj|dzien dobry|dobry wieczor|siema)( miri)?$/.test(n))return 'Cześć '+S.user+'! W czym mogę pomóc?';
-  if(has('kim jestes','jak sie nazywasz','co potrafisz','co umiesz'))return 'Jestem Miri, asystentka MGS Computer. Otwieram aplikacje, podaję godzinę, włączam muzykę, ustawiam minutniki, zapisuję notatki i odpowiadam na pytania, gdy działa połączenie z AI.';
-  if(has('ktora godzina','jaka godzina','ktora jest'))return 'Jest '+pad(d.getHours())+':'+pad(d.getMinutes())+'.';
-  if(has('jaka data','jaki dzis dzien','jaki mamy dzien','ktorego dzis','jaki jest dzisiaj dzien'))return 'Dzisiaj jest '+d.toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
-  if(has('ciemny tryb','tryb ciemny','ciemny motyw','tryb nocny')){setTheme('dark');return 'Włączam tryb ciemny.'}
-  if(has('jasny tryb','tryb jasny','jasny motyw','tryb dzienny')){setTheme('light');return 'Włączam tryb jasny.'}
-  if(has('pelny ekran')){toggleFullscreen();return 'Przełączam pełny ekran.'}
-  if(has('wylacz komputer','zamknij komputer')){confirmPower('shutdown');return 'Potwierdź wyłączenie w oknie dialogowym.'}
-  if(has('zrestartuj','uruchom ponownie','restart komputera')){confirmPower('restart');return 'Potwierdź restart w oknie dialogowym.'}
-  if(/\buspij\b/.test(n)){setTimeout(sleepNow,1400);return 'Usypiam komputer.'}
-  if(has('zablokuj ekran')){setTimeout(login,1200);return 'Blokuję ekran.'}
-  if(has('mission control','wszystkie okna')){setTimeout(toggleMC,300);return 'Pokazuję wszystkie okna.'}
-  if(has('launchpad')){setTimeout(openLaunchpad,300);return 'Otwieram Launchpad.'}
-  if(has('zamknij wszystko','zamknij wszystkie okna')){closeAll();return 'Zamykam wszystkie okna.'}
-  if(has('ciszej','scisz')){S.volume=Math.max(0,S.volume-20);saveS();applySettings();return 'Ściszam do '+S.volume+' procent.'}
-  if(has('glosniej')){S.volume=Math.min(100,S.volume+20);saveS();applySettings();return 'Zgłaśniam do '+S.volume+' procent.'}
-  if(/^wycisz/.test(n)){S.volume=0;saveS();applySettings();return 'Wyciszam dźwięk.'}
-  /* tapety */
-  if(has('tapet')){
-    const w=WALLS.find(x=>x.id!=='custom'&&miriNorm(x.name).length>2&&n.includes(miriNorm(x.name)));
-    if(w){S.wall=w.id;saveS();applyWall();return 'Ustawiam tapetę „'+w.name+'”.'}
-    if(has('zmien','inna','nastepna','losow')){const l=WALLS.filter(x=>x.id!=='custom'),i=l.findIndex(x=>x.id===S.wall);const nx=l[(i+1)%l.length];S.wall=nx.id;saveS();applyWall();return 'Zmieniam tapetę na „'+nx.name+'”.'}
+async function miriHandle(text,opts={}){
+  text=(text||'').replace(/^\s*(?:(?:hej|hey|hei|cześć|czesc|ok|okej)[\s,]*)?(?:miri|miry|siri)\b[\s,.!:]*/i,'').trim()||(text||'').trim(); if(!text)return;
+  const chat=opts.chatId?(Chats.find(c=>c.id===opts.chatId)||miriChat(false)):miriChat(!!opts.panel);
+  MiriS.chat=chat.id; MiriS.transcript=text; MiriS.reply=''; clearTimeout(MiriS.closeT);
+  pushMsg(chat,'user',text); setState('thinking');
+  let reply=null; try{reply=miriLocal(text)}catch(e){console.error(e);reply=null}
+  if(reply==null){
+    const r=await miriAI(chat);
+    reply=r.actions.length?miriSummary(r.actions):(r.text||'Nie mam nic do dodania.');
   }
-  /* muzyka */
-  if(has('nastepny utwor','nastepna piosenk','nastepny kawalek')||n==='dalej'||n==='nastepny'){musicNext();return 'Następny utwór: '+TRACKS[Music.cur].name+'.'}
-  if(has('poprzedni utwor','poprzednia piosenk')||n==='poprzedni'){musicPrev();return 'Poprzedni utwór: '+TRACKS[Music.cur].name+'.'}
-  if(has('pauza','zatrzymaj muzyk','wylacz muzyk','stop muzyk','zatrzymaj piosenk')){if(Music.playing)musicToggle();return 'Zatrzymałam muzykę.'}
-  const pm=n.match(/^(?:zagraj|odtworz|pusc|wlacz)\s+(?:mi\s+)?(?:utwor\s+|piosenke\s+)?(.+)$/);
-  if(pm){
-    const q=pm[1].trim();
-    if(q.length>=3){const i=TRACKS.findIndex(t=>(!t.file||t.ok!==false)&&miriNorm(t.name).includes(q));if(i>=0){musicPlay(i);return 'Gram: '+TRACKS[i].name+'.'}}
-    if(/^(muzyke|piosenke|cos|jakas muzyke|jakis utwor|jakas piosenke|muzyka)$/.test(q)){if(Music.cur==null)musicPlay(Math.random()*GEN.length|0);else if(!Music.playing)musicToggle();return 'Gram: '+TRACKS[Music.cur].name+'.'}
-  }
-  /* minutnik */
-  const tm=n.match(/(\d+)\s*(sekund\w*|sek|minut\w*|min|godzin\w*|godz)/);
-  if(tm&&has('minutnik','odlicz','timer','za ')&&(has('minutnik','odlicz','timer')||has('przypomnij'))){
-    const v=+tm[1], u=tm[2][0]==='s'?1000:tm[2][0]==='g'?3600000:60000, ms=v*u, what=tm[0];
-    setTimeout(()=>{sfx('notify');notify('Minutnik','Czas minął: '+what+'.','clock');miriSpeak('Czas minął.')},ms);
-    return 'Ustawiam minutnik na '+what+'.';
-  }
-  /* notatki i przypomnienia */
-  if(/(zrob|dodaj|zapisz|napisz|stworz)\b.*\bnotatk/.test(n)){
-    const body=text.replace(/^.*?notatk\S*\s*(o |że |ze |z treścią |:)?\s*/i,'').trim()||'Notatka głosowa';
-    const notes=store.get('notes',[]); notes.unshift({id:Date.now(),t:body}); store.set('notes',notes); return 'Zapisałam notatkę: '+body+'.';
-  }
-  const rm=text.match(/^przypomnij mi\s*(?:żeby|zeby|że|ze|o)?\s*(.+)$/i);
-  if(rm&&!tm){
-    const D=store.get('rem',null)||{lists:[{id:'a',name:'Przypomnienia',color:'#0a84ff'},{id:'b',name:'Zakupy',color:'#ff9f0a'},{id:'c',name:'Praca',color:'#30d158'}],items:[]};
-    D.items.push({id:Date.now(),list:D.lists[0].id,text:rm[1].trim(),done:false}); store.set('rem',D); return 'Dodałam przypomnienie: '+rm[1].trim()+'.';
-  }
-  /* kalkulator */
-  if(has('policz','ile to','ile jest','oblicz')||/^[\d\s+\-*/x÷^().,]+$/.test(n)&&/\d\s*[+\-*/x÷^]\s*\d/.test(n)){
-    let e=n.replace(/policz|ile to jest|ile to|ile jest|oblicz/g,' ').replace(/ plus /g,'+').replace(/ minus /g,'-').replace(/ razy /g,'*').replace(/ x /g,'*').replace(/ podzielic przez | podzielic na /g,'/').replace(/ do kwadratu/g,'**2').replace(/\^/g,'**').replace(/,/g,'.').replace(/\s+/g,'');
-    if(/^[\d+\-*/().]+$/.test(e)&&/\d/.test(e)){try{const v=Function('"use strict";return('+e+')')();if(isFinite(v))return 'To jest '+String(+v.toPrecision(12)).replace('.',',')+'.'}catch(er){}}
-  }
-  /* zamykanie i otwieranie aplikacji */
-  if(/^(zamknij)\s/.test(n)){const id=appFromText(n);if(id&&winsOf(id).length){winsOf(id).forEach(closeWin);return 'Zamykam '+APPS[id].name+'.'}}
-  if(/^(otworz|uruchom|wlacz|pokaz|przejdz do|idz do|odpal)\s/.test(n)||n==='miri ai'){
-    const id=appFromText(n);
-    if(id&&APPS[id]){
-      if(BASE_APPS.includes(id)||S.installed.includes(id)){openApp(id);return 'Otwieram '+APPS[id].name+'.'}
-      openApp('appstore'); return 'Nie masz jeszcze aplikacji '+APPS[id].name+'. Otwieram App Store, tam ją pobierzesz.';
-    }
-  }
-  return null;
+  pushMsg(chat,'assistant',reply); MiriS.reply=reply; setState('idle'); miriUI();
+  const fin=()=>{setState('idle');sfx('miriend');miriScheduleClose();if(MiriS.pending&&opts.voice)miriListen();else miriStartWake()};
+  if(S.miri.speak&&window.speechSynthesis){setState('speaking');miriSpeak(reply,fin)}else fin();
 }
 
 /* ---------- ustawienia Miri (używane w aplikacji i w Ustawieniach systemowych) ---------- */
