@@ -474,6 +474,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 @keyframes eq{0%,100%{height:3px}50%{height:14px}}
 .tr .tag{font-size:10px;border-radius:4px;padding:0 5px;background:var(--strong);margin-left:6px;color:var(--fg2)}
 .mctl button.on{background:var(--strong)}
+#spot .spans{border-top:1px solid var(--line);padding:14px 18px;max-height:34vh;overflow:auto;display:grid;gap:10px;justify-items:start}
+#spot .spt{white-space:pre-wrap;user-select:text;-webkit-user-select:text;line-height:1.5;font-size:15px}
 /* przeciąganie: dock, pulpit, karty */
 .dk.dragging{opacity:.25}
 .dk.ins-l::before,.dk.ins-r::before{content:"";position:absolute;top:2px;bottom:2px;width:3px;border-radius:3px;background:var(--accent);box-shadow:0 0 8px var(--accent)}
@@ -965,8 +967,10 @@ function trashApp(id){
   if(!APPS[id])return;
   if(S.installed.includes(id)){sfx('trash');uninstallApp(id);return}
   if(!BASE_APPS.includes(id)||S.removed.includes(id))return;
-  const crit=CRITICAL.includes(id);
-  dialog({title:'Usunąć aplikację „'+APPS[id].name+'”?',msg:crit?'To krytyczna aplikacja systemowa. Gdy jakaś czynność będzie jej wymagać, system ulegnie awarii i uruchomi się ponownie.':'To aplikacja systemowa. Czynności, które jej wymagają, nie będą działać, dopóki nie przywrócisz jej z Kosza albo z App Store.',ic:WARN_ICON,buttons:[{label:'Anuluj',cancel:true},{label:'Przenieś do kosza',primary:true,cb:()=>removeSystemApp(id)}]});
+  /* aplikacji systemowych nie da się usunąć: alert jak w prawdziwym systemie */
+  sfx('error');
+  dialog({title:'Nie można przenieść „'+APPS[id].name+'” do kosza',msg:'Ta aplikacja jest wymagana przez system, więc nie można jej zmodyfikować ani usunąć.',ic:WARN_ICON,buttons:[{label:'OK',primary:true}]});
+  notify('Nie można usunąć „'+APPS[id].name+'”','To aplikacja systemowa wymagana przez system.',id);
 }
 let crashOpen=false;
 function appMissing(id){
@@ -1162,7 +1166,7 @@ function closeSpot(){const s=$('#spot');if(s)s.remove()}
 function openSpot(){
   closeMenus(); if($('#spot'))return;
   const s=el('div'); s.id='spot';
-  s.innerHTML='<div class="box"><div class="q"><svg class="ico" width="24" height="24" viewBox="0 0 15 15" style="color:var(--fg2)"><circle cx="6.3" cy="6.3" r="4.6"/><path d="m10 10 3.6 3.6"/></svg><input id="spi" placeholder="Spotlight" autocomplete="off" spellcheck="false" aria-label="Spotlight"></div><div class="res" id="spr"></div></div>';
+  s.innerHTML='<div class="box"><div class="q"><svg class="ico" width="24" height="24" viewBox="0 0 15 15" style="color:var(--fg2)"><circle cx="6.3" cy="6.3" r="4.6"/><path d="m10 10 3.6 3.6"/></svg><input id="spi" placeholder="Spotlight" autocomplete="off" spellcheck="false" aria-label="Spotlight"></div><div class="res" id="spr"></div><div class="spans" id="spans" hidden></div></div>';
   document.body.append(s);
   s.onpointerdown=e=>{if(e.target===s)closeSpot()};
   const i=$('#spi'); i.focus(); i.oninput=()=>{spSel=0;spRender()};
@@ -1170,10 +1174,19 @@ function openSpot(){
     const n=spRows.length;
     if(e.key==='ArrowDown'){spSel=(spSel+1)%Math.max(1,n);spMark();e.preventDefault()}
     else if(e.key==='ArrowUp'){spSel=(spSel+n-1)%Math.max(1,n);spMark();e.preventDefault()}
-    else if(e.key==='Enter'){const r=spRows[spSel];if(r){closeSpot();r[3]()}}
+    else if(e.key==='Enter'){const r=spRows[spSel];if(r){if(!r[4])closeSpot();r[3]()}}
   };
 }
 function spMark(){$$('.sr').forEach((x,j)=>x.classList.toggle('sel',j===spSel))}
+/* odpowiedź AI w Spotlight: tekst albo wykonane akcje; można ją kontynuować w aplikacji Miri AI */
+async function spotAI(q){
+  const a=$('#spans'); if(!a)return; a.hidden=false; a.innerHTML='<div class="mtype"><i></i><i></i><i></i></div>';
+  const r=await miriAI({msgs:[{r:'user',t:q}]}); const a2=$('#spans'); if(!a2)return;
+  const text=r.actions.length?(miriSummary(r.actions,q)||r.text||'Nie jestem pewna, o co prosisz.'):(r.text||'Brak odpowiedzi.');
+  a2.innerHTML=''; const t=el('div','spt'); t.textContent=text; const b=el('button','btn','Kontynuuj w Miri AI');
+  b.onclick=()=>{closeSpot();const c=miriNewChat();pushMsg(c,'user',q);pushMsg(c,'assistant',text);openApp('miri')};
+  a2.append(t,b);
+}
 function spRender(){
   const q=$('#spi').value.trim().toLowerCase(), box=$('#spr'); box.innerHTML=''; spRows=[];
   if(!q)return;
@@ -1185,11 +1198,14 @@ function spRender(){
   VFS.walk(HOME,(p,n)=>{if(found>=6||!n||p===HOME||p.startsWith(TRASH))return;const nm=p.split('/').pop();if(nm.startsWith('.'))return;if(nm.toLowerCase().includes(q)){found++;spRows.push([n.t==='d'?folderSVG:fileSVG(n.k==='img'?'img':'doc'),nm,n.t==='d'?'Folder':'Dokument',()=>openNode(p)])}});
   if(/ciemn|dark|motyw/.test(q))spRows.push(['','Przełącz tryb ciemny','Ustawienie',toggleTheme]);
   ['restart:Uruchom ponownie','wyłącz:Wyłącz komputer','uśpij:Uśpij'].forEach(x=>{const[k,l]=x.split(':');if(q.length>2&&k.startsWith(q))spRows.push(['',l,'System',k==='restart'?()=>confirmPower('restart'):k==='uśpij'?sleepNow:()=>confirmPower('shutdown')])});
+  /* Spotlight korzysta też z AI: ostatni wiersz pyta Miri (Enter lub kliknięcie) */
+  const ask_=$('#spi').value.trim(); if(ask_.length>=3)spRows.push([miriIcon(),'Zapytaj Miri: „'+ask_.slice(0,60)+'”','AI',()=>spotAI(ask_),true]);
   if(!spRows.length)spRows.push(['','Brak wyników','',()=>{}]);
+  $('#spans').hidden=true;
   spRows.forEach((r,i)=>{
     const d=el('div','sr'+(i===spSel?' sel':''),(r[0]||'<span style="width:28px"></span>')+'<b></b><small></small>');
     $('b',d).textContent=r[1]; $('small',d).textContent=r[2];
-    d.onclick=()=>{closeSpot();r[3]()}; d.onpointerenter=()=>{spSel=i;spMark()}; box.append(d);
+    d.onclick=()=>{if(!r[4])closeSpot();r[3]()}; d.onpointerenter=()=>{spSel=i;spMark()}; box.append(d);
   });
 }
 $('#spbtn').onclick=e=>{e.stopPropagation();openSpot()};
@@ -2398,8 +2414,6 @@ function renderSettings(body,w,opts){
       set.append(card(row('System',el('span','','' + SYS+' 1.0')),row('Użytkownik',el('span','',esc(S.user))),row('Dostępne aplikacje',el('span','',String([...BASE_APPS,...S.installed].filter(appAvail).length)))));
       const rb=el('button','btn','Przywróć ustawienia fabryczne…'); rb.onclick=()=>dialog({title:'Przywrócić ustawienia fabryczne?',msg:'Usunie wszystkie pliki, notatki, ustawienia i pobrane aplikacje z tej przeglądarki. Nie da się tego cofnąć.',buttons:[{label:'Anuluj',cancel:true},{label:'Przywróć',primary:true,cb:()=>{try{Object.keys(localStorage).filter(k=>k.startsWith('mw_')).forEach(k=>localStorage.removeItem(k))}catch(e){}location.reload()}}]});
       set.append(rb);
-      const rs=el('button','btn','Przywróć usunięte aplikacje systemowe'); rs.disabled=!S.removed.length; rs.style.marginLeft='8px';
-      rs.onclick=()=>{[...S.removed].forEach(i=>restoreApp(i,true));notify('Przywrócono aplikacje','Aplikacje systemowe są znów dostępne.','settings');draw()}; set.append(rs);
     }
     if(pane==='look'){
       const accs=el('div','accs'); accs.style.padding='0'; ['#0a84ff','#bf5af2','#ff375f','#ff9f0a','#30d158','#64d2ff'].forEach(c=>{const b=el('button',S.accent===c?'on':'');b.style.background=c;b.setAttribute('aria-label','Akcent '+c);b.onclick=()=>{S.accent=c;saveS();applySettings();draw()};accs.append(b)});
@@ -3202,6 +3216,8 @@ function miriInit(){
 /* ================= START ================= */
 S.installed=S.installed.filter(i=>APPS[i]);
 if(!S.dockMigrated){S.installed.forEach(i=>{if(!S.dockApps.includes(i))S.dockApps.push(i)});S.dockMigrated=true;saveS()}
+/* aplikacji systemowych nie można usunąć: przywróć te, które usunięto w starszej wersji */
+[...S.removed].forEach(i=>restoreApp(i,true)); S.repairNote=[];
 VFS.syncApps(); applySettings(); buildMenubar(); refreshDock(); drawIcons(); miriInit();
 if(S.wall==='auto')setInterval(applySettings,600000);
 boot();
