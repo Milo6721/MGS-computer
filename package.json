@@ -1,0 +1,10 @@
+{
+  "name": "mgs-computer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MGS Computer: pulpit w przeglądarce z Miri AI",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
+  }
+}
