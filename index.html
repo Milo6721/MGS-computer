@@ -474,6 +474,11 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 @keyframes eq{0%,100%{height:3px}50%{height:14px}}
 .tr .tag{font-size:10px;border-radius:4px;padding:0 5px;background:var(--strong);margin-left:6px;color:var(--fg2)}
 .mctl button.on{background:var(--strong)}
+.eqm{display:inline-flex;gap:2px;align-items:flex-end;height:13px}
+.eqm i{width:3px;background:currentColor;border-radius:2px;animation:eq .9s ease-in-out infinite}
+.eqm i:nth-child(2){animation-delay:.2s}.eqm i:nth-child(3){animation-delay:.4s}
+.mxn{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;margin-left:6px}
+@media (max-width:900px){.mxn{display:none}}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (prefers-reduced-motion:reduce){.win,.dk,.dk.bounce,.banner{animation:none!important;transition:none!important}}
 </style>
@@ -610,16 +615,16 @@ function ac(){
     return AC;
   }catch(e){return null}
 }
-function tone(f,t,d,type='sine',v=.2,f2){
+function tone(f,t,d,type='sine',v=.2,f2,dest){
   const o=AC.createOscillator(), g=AC.createGain(); o.type=type; o.frequency.setValueAtTime(f,t);
   if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
   g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+.012); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-  o.connect(g); g.connect(master); o.start(t); o.stop(t+d+.05);
+  o.connect(g); g.connect(dest||master); o.start(t); o.stop(t+d+.05);
 }
-function noiseBurst(t,d,v){
+function noiseBurst(t,d,v,dest){
   const n=AC.sampleRate*d|0, b=AC.createBuffer(1,n,AC.sampleRate), x=b.getChannelData(0);
   for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*(1-i/n);
-  const s=AC.createBufferSource(), g=AC.createGain(); s.buffer=b; g.gain.value=v; s.connect(g); g.connect(master); s.start(t);
+  const s=AC.createBufferSource(), g=AC.createGain(); s.buffer=b; g.gain.value=v; s.connect(g); g.connect(dest||master); s.start(t);
 }
 const SFX={
   click:t=>tone(1400,t,.035,'square',.03),
@@ -1109,9 +1114,16 @@ wifiDraw();
 $('#wifi').onclick=e=>{e.stopPropagation();const r=$('#wifi').getBoundingClientRect();popMenu([['Wi-Fi: '+(S.wifi?'włączone':'wyłączone'),()=>{S.wifi=!S.wifi;saveS();wifiDraw()},'',{chk:S.wifi}],'-',...(S.wifi?[['Sieć domowa (połączono)',()=>{},'',{chk:true}],['Kawiarnia',()=>{}],['Biuro 5G',()=>{}]]:[]),'-',['Ustawienia sieci…',()=>openApp('settings')]],r.left-80,MB+2)};
 on('music',()=>{
   const m=$('#musicx'); m.hidden=!(Music&&Music.playing);
-  m.innerHTML=Music&&Music.playing?'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18V6l10-2v12" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="6.5" cy="18" r="3"/><circle cx="16.5" cy="16" r="3"/></svg>':'';
+  const tr=Music&&Music.cur!=null?TRACKS[Music.cur]:null;
+  m.innerHTML=Music&&Music.playing?'<span class="eqm"><i></i><i></i><i></i></span><span class="mxn"></span>':'';
+  if(tr&&Music.playing)$('.mxn',m).textContent=tr.name; m.title=tr?'Gra: '+tr.name+' (kliknij, aby zatrzymać)':'';
 });
-$('#musicx').onclick=()=>openApp('music');
+/* ikona „gra muzyka” na pasku menu: tu zawsze można ją wstrzymać lub zatrzymać */
+$('#musicx').style.cursor='default';
+$('#musicx').onclick=e=>{
+  e.stopPropagation(); const r=$('#musicx').getBoundingClientRect(), tr=Music.cur!=null?TRACKS[Music.cur]:null;
+  popMenu([[tr?'Gra: '+tr.name:'Muzyka',()=>{},'',{off:true}],'-',[Music.playing?'Pauza':'Wznów',musicToggle],['Następny utwór',musicNext],['Zatrzymaj muzykę',musicStop],'-',['Otwórz Muzykę',()=>openApp('music')]],Math.max(4,r.left-60),MB+2);
+};
 
 $('#ccbtn').onclick=e=>{
   e.stopPropagation(); if($('#cc')){closeMenus();return} closeMenus();
@@ -1940,7 +1952,10 @@ const fileArt=n=>{let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))%360;return[`
 /* pliki audio z folderu (lista tworzona przez build.ps1 w src/b3-songs.js) */
 const TRACKS=[...GEN,...((typeof SONGS!=='undefined'?SONGS:[]).map(s=>({name:s.name,artist:'Plik z folderu',file:s.file,art:fileArt(s.name)})))];
 const MusicAudio=new Audio(); MusicAudio.preload='none';
-const Music={playing:false,cur:null,step:0,next:0,start:0,elapsed:0,timer:null,analyser:null,node:null,shuffle:false,repeat:false};
+const Music={playing:false,cur:null,step:0,next:0,start:0,elapsed:0,timer:null,analyser:null,node:null,bus:null,shuffle:false,repeat:false};
+/* utwory generowane grają przez osobny kanał, który można natychmiast wyciszyć (inaczej zaplanowane dźwięki dogrywałyby się jeszcze kilka sekund po zatrzymaniu) */
+function musicCut(){const b=Music.bus;Music.bus=null;if(b&&AC){try{b.gain.cancelScheduledValues(AC.currentTime);b.gain.setTargetAtTime(0,AC.currentTime,.015)}catch(e){}setTimeout(()=>{try{b.disconnect()}catch(e){}},300)}}
+function musicBus(){musicCut();Music.bus=AC.createGain();Music.bus.connect(master);return Music.bus}
 const musicFreq=(deg,tr,oct=0)=>{const s=tr.scale,o=Math.floor(deg/s.length),i=((deg%s.length)+s.length)%s.length;return 440*Math.pow(2,(tr.root+s[i]+12*(o+oct)-69)/12)};
 const musicDur=()=>{const tr=TRACKS[Music.cur];return tr&&tr.file?(MusicAudio.duration||0):180};
 function musicPos(){const tr=TRACKS[Music.cur];if(tr&&tr.file)return MusicAudio.currentTime||0;return(Music.elapsed+(Music.playing?Date.now()-Music.start:0))/1000}
@@ -1948,31 +1963,31 @@ function musicSchedule(){
   const tr=TRACKS[Music.cur]; if(!AC||!Music.playing||!tr||tr.file)return; const spb=60/tr.bpm/2;
   while(Music.next<AC.currentTime+.3){
     const i=Music.step, t=Music.next, d=tr.pat[i%tr.pat.length];
-    if(d!==null)tone(musicFreq(d,tr),t,spb*1.9,tr.wave,tr.vol);
-    if(i%8===0)tone(musicFreq(tr.bass[(i/8)%tr.bass.length|0],tr,-1),t,spb*7.5,'sine',.13);
-    if(i%16===0)[0,2,4].forEach(k=>tone(musicFreq(k+tr.bass[(i/16)%tr.bass.length|0],tr,0),t,spb*15,'sine',.03));
-    if(tr.noise&&i%2===0)noiseBurst(t,spb*.9,.03);
+    if(d!==null)tone(musicFreq(d,tr),t,spb*1.9,tr.wave,tr.vol,undefined,Music.bus);
+    if(i%8===0)tone(musicFreq(tr.bass[(i/8)%tr.bass.length|0],tr,-1),t,spb*7.5,'sine',.13,undefined,Music.bus);
+    if(i%16===0)[0,2,4].forEach(k=>tone(musicFreq(k+tr.bass[(i/16)%tr.bass.length|0],tr,0),t,spb*15,'sine',.03,undefined,Music.bus));
+    if(tr.noise&&i%2===0)noiseBurst(t,spb*.9,.03,Music.bus);
     Music.next+=spb; Music.step++;
   }
   if(musicPos()>=180)musicEnded();
 }
 function musicPlay(i){
   const tr=TRACKS[i]; if(!tr||!ac())return;
-  clearInterval(Music.timer); MusicAudio.pause(); Music.cur=i; Music.elapsed=0; Music.start=Date.now(); Music.playing=true;
+  clearInterval(Music.timer); musicCut(); MusicAudio.pause(); Music.cur=i; Music.elapsed=0; Music.start=Date.now(); Music.playing=true;
   if(!Music.analyser){Music.analyser=AC.createAnalyser();Music.analyser.fftSize=64;master.connect(Music.analyser)}
   if(tr.file){
     /* przez graf audio tylko na http(s): z file:// przeglądarka wyciszyłaby dźwięk */
     if(!Music.node&&location.protocol.startsWith('http')){try{Music.node=AC.createMediaElementSource(MusicAudio);Music.node.connect(master)}catch(e){}}
     MusicAudio.volume=Music.node?1:S.volume/100; MusicAudio.src=encodeURI(tr.file); MusicAudio.load();
     const p=MusicAudio.play(); if(p&&p.catch)p.catch(()=>{Music.playing=false;notify('Muzyka','Nie można odtworzyć pliku „'+tr.file+'”.','music');emit('music')});
-  }else{Music.step=0;Music.next=AC.currentTime+.06;Music.timer=setInterval(musicSchedule,100)}
+  }else{musicBus();Music.step=0;Music.next=AC.currentTime+.06;Music.timer=setInterval(musicSchedule,100)}
   emit('music');
 }
 function musicToggle(){
   if(Music.cur==null)return musicPlay(0);
   const tr=TRACKS[Music.cur];
-  if(Music.playing){if(tr.file)MusicAudio.pause();else{Music.elapsed+=Date.now()-Music.start;clearInterval(Music.timer)}Music.playing=false}
-  else if(ac()){if(tr.file){const p=MusicAudio.play();if(p&&p.catch)p.catch(()=>{})}else{Music.start=Date.now();Music.next=AC.currentTime+.06;Music.timer=setInterval(musicSchedule,100)}Music.playing=true}
+  if(Music.playing){if(tr.file)MusicAudio.pause();else{Music.elapsed+=Date.now()-Music.start;clearInterval(Music.timer);musicCut()}Music.playing=false}
+  else if(ac()){if(tr.file){const p=MusicAudio.play();if(p&&p.catch)p.catch(()=>{})}else{musicBus();Music.start=Date.now();Music.next=AC.currentTime+.06;Music.timer=setInterval(musicSchedule,100)}Music.playing=true}
   emit('music');
 }
 function musicNext(){
@@ -1982,7 +1997,7 @@ function musicNext(){
 }
 const musicPrev=()=>musicPlay(((Music.cur??1)-1+TRACKS.length)%TRACKS.length);
 const musicEnded=()=>Music.repeat&&Music.cur!=null?musicPlay(Music.cur):musicNext();
-function musicStop(){clearInterval(Music.timer);MusicAudio.pause();Music.playing=false;Music.cur=null;Music.elapsed=0;emit('music')}
+function musicStop(){clearInterval(Music.timer);musicCut();MusicAudio.pause();Music.playing=false;Music.cur=null;Music.elapsed=0;emit('music')}
 MusicAudio.addEventListener('ended',musicEnded);
 MusicAudio.addEventListener('error',()=>{const tr=TRACKS[Music.cur];if(tr&&tr.file&&Music.playing){Music.playing=false;notify('Muzyka','Nie można odtworzyć pliku „'+tr.file+'”.','music');emit('music')}});
 
@@ -2028,7 +2043,8 @@ function renderMusic(body,w){
     for(let k=0;k<n;k++){const h=Math.max(3,(data[k]/255)*cv.height*.95);g.fillStyle=col;g.globalAlpha=.85;g.beginPath();g.roundRect?g.roundRect(k*bw+2,cv.height-h,bw-4,h,3):g.rect(k*bw+2,cv.height-h,bw-4,h);g.fill()}
     raf=requestAnimationFrame(frame);
   }
-  w.on('music',upd); w.cleanups.push(()=>cancelAnimationFrame(raf)); upd(); frame();
+  /* zamknięcie okna Muzyki zatrzymuje odtwarzanie (żeby nic nie grało w tle po cichu) */
+  w.on('music',upd); w.cleanups.push(()=>{cancelAnimationFrame(raf);musicStop()}); upd(); frame();
 }
 
 /* ================= NOTATKI ================= */
@@ -2709,7 +2725,7 @@ function miriDo(name,inp){
     }
     case 'music':{
       const a=inp.action||'play';
-      if(a==='pause'){if(Music.playing){musicToggle();return okR('Zatrzymałam muzykę.')}return failR('Muzyka teraz nie gra.')}
+      if(a==='pause'||a==='stop'){if(Music.playing||Music.cur!=null){musicStop();return okR('Zatrzymałam muzykę.')}return failR('Muzyka teraz nie gra.')}
       if(a==='next'){musicNext();return okR('Następny utwór: '+TRACKS[Music.cur].name+'.')}
       if(a==='previous'){musicPrev();return okR('Poprzedni utwór: '+TRACKS[Music.cur].name+'.')}
       const q=miriNorm(String(inp.query||'')).trim();
@@ -2844,7 +2860,8 @@ function miriLocal(text){
   /* muzyka */
   if(has('nastepny utwor','nastepna piosenk','nastepny kawalek')||n==='dalej'||n==='nastepny')return miriDo('music',{action:'next'}).msg;
   if(has('poprzedni utwor','poprzednia piosenk')||n==='poprzedni')return miriDo('music',{action:'previous'}).msg;
-  if(has('pauza','zatrzymaj muzyk','wylacz muzyk','stop muzyk','zatrzymaj piosenk','wstrzymaj'))return miriDo('music',{action:'pause'}).msg;
+  if(has('pauza','zatrzymaj muzyk','wylacz muzyk','stop muzyk','zatrzymaj piosenk','wstrzymaj','wylacz piosenk','nie graj'))return miriDo('music',{action:'stop'}).msg;
+  if(Music.playing&&/^(stop|cisza|przestan|zatrzymaj|wylacz|spokoj|dosyc|wystarczy)( to| juz)?$/.test(n))return miriDo('music',{action:'stop'}).msg;
   if(has('co gra','jaki utwor gra','co teraz gra'))return Music.cur!=null&&Music.playing?'Gra: '+TRACKS[Music.cur].name+'.':'Teraz nic nie gra.';
   const pm=n.match(/^(?:zagraj|odtworz|pusc|wlacz|odpal)\s+(?:utwor\s+|piosenke\s+|muzyke\s+)?(.*)$/);
   if(pm){
